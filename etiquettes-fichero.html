@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Étiquettes Prélèvements</title>
+<style>
+  :root {
+    color-scheme: light;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --ok: #2a7a2a;
+    --err: #b3261e;
+    --border: #d1d5db;
+    --bg: #f7f7f8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px 16px 48px;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: #1a1a1a;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+  label:first-child { margin-top: 0; }
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .row2 {
+    display: flex;
+    gap: 8px;
+  }
+  .row2 > div { flex: 1; }
+  .hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
+  .preview-wrap {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+  }
+  canvas#previewCanvas {
+    display: block;
+    background: #fff;
+  }
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  button {
+    flex: 1 1 auto;
+    min-width: 120px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:active { background: var(--accent-dark); }
+  button.secondary {
+    background: #eee;
+    color: #333;
+  }
+  button:disabled {
+    opacity: 0.5;
+  }
+  #status {
+    margin-top: 12px;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  #status.ok { color: var(--ok); }
+  #status.err { color: var(--err); }
+  #printerInfo {
+    font-size: 13px;
+    color: #555;
+    margin-top: 8px;
+  }
+  details summary {
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Étiquettes de prélèvement</h1>
+<div class="subtitle">Imprimante FICHERO Bluetooth — via Web Bluetooth (nécessite Bluefy sur iPhone)</div>
+
+<div class="card">
+  <label for="patientPicker">Patient enregistré</label>
+  <select id="patientPicker">
+    <option value="">—</option>
+  </select>
+
+  <label for="civilite">Civilité</label>
+  <select id="civilite">
+    <option value=""></option>
+    <option value="M">M</option>
+    <option value="Mme">Mme</option>
+  </select>
+
+  <label for="nom">Nom *</label>
+  <input type="text" id="nom" autocapitalize="characters">
+
+  <label for="prenom">Prénom *</label>
+  <input type="text" id="prenom" autocapitalize="words">
+
+  <label for="nomNaissance">Nom de naissance</label>
+  <input type="text" id="nomNaissance" autocapitalize="characters">
+
+  <label for="ddn">Date de naissance</label>
+  <input type="text" id="ddn" placeholder="JJ/MM/AAAA" inputmode="numeric">
+
+  <label for="sexe">Sexe</label>
+  <select id="sexe">
+    <option value=""></option>
+    <option value="H">H</option>
+    <option value="F">F</option>
+  </select>
+
+  <label for="adresse">Adresse</label>
+  <input type="text" id="adresse" placeholder="ex : 11 rue de l'Église">
+
+  <div class="row2">
+    <div>
+      <label for="codepostal">Code postal</label>
+      <input type="text" id="codepostal" inputmode="numeric">
+    </div>
+    <div>
+      <label for="commune">Commune</label>
+      <input type="text" id="commune" autocapitalize="characters">
+    </div>
+  </div>
+
+  <label for="copies">Nombre d'étiquettes</label>
+  <input type="number" id="copies" value="3" min="1" max="30">
+</div>
+
+<div class="card">
+  <label style="margin-top:0">Aperçu</label>
+  <div class="preview-wrap">
+    <canvas id="previewCanvas" width="400" height="96"></canvas>
+  </div>
+
+  <div class="buttons">
+    <button id="btnApercu" class="secondary" type="button">Aperçu</button>
+    <button id="btnEffacer" class="secondary" type="button">Effacer</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="buttons">
+    <button id="btnConnecter" class="secondary" type="button">Connecter l'imprimante</button>
+    <button id="btnImprimer" type="button">Imprimer</button>
+    <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
+  </div>
+  <div id="printerInfo"></div>
+  <div id="status"></div>
+</div>
+
+<details>
+  <summary>À propos</summary>
+  <p style="font-size:13px;color:#666">
+    Cette page parle directement en Bluetooth à l'imprimante FICHERO (protocole
+    documenté par le projet open-source
+    <a href="https://github.com/0xMH/fichero-printer" target="_blank" rel="noopener">fichero-printer</a>,
+    licence MIT), sans passer par l'application FICHERO Printer.
+    Les patients enregistrés sont stockés uniquement dans ce téléphone
+    (mémoire du navigateur), jamais envoyés sur internet.
+    Safari ne supporte pas le Bluetooth depuis une page web : cette page doit
+    être ouverte avec l'appli <strong>Bluefy</strong> (gratuite, App Store).
+  </p>
+</details>
+
+<script>
+(function () {
+  "use strict";
+
+  // --- Constantes étiquette (identiques à l'application Mac) -------------
+  const DOTS_PER_MM = 8;
+  const LABEL_LENGTH_MM = 50;
+  const MAX_ROWS = LABEL_LENGTH_MM * DOTS_PER_MM;   // 400 px = longueur de l'étiquette
+  const PRINTHEAD_PX = 96;                           // largeur fixe de la tête d'impression
+  const MARGIN_PX = 3;
+  const HORIZONTAL_SHIFT_PX = -16;                   // décale le texte de 2mm vers la gauche
+  const DENSITY = 2;
+  const BYTES_PER_ROW = PRINTHEAD_PX / 8;             // 12
+
+  // --- Constantes Bluetooth (protocole FICHERO D11s / AiYin) -------------
+  const SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
+  const WRITE_UUID = "00002af1-0000-1000-8000-00805f9b34fb";
+  const NOTIFY_UUID = "00002af0-0000-1000-8000-00805f9b34fb";
+
+  // --- Mémorisation des patients (localStorage, propre à ce téléphone) ---
+  const STORAGE_KEY = "fichero_patients_v1";
+
+  function loadPatients() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function savePatients(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function patientLabel(p) {
+    let label = `${p.nom || ""} ${p.prenom || ""}`.trim();
+    if (p.ddn) label += ` (${p.ddn})`;
+    return label;
+  }
+
+  // --- Construction du contenu texte (mêmes règles que l'appli Mac) ------
+
+  function buildSections(f) {
+    const sections = [];
+    const ligne1 = [f.civilite, f.nom, f.prenom].filter(Boolean).join(" ");
+    if (ligne1) sections.push({ text: ligne1, bold: true });
+
+    let nePrefix = f.sexe === "F" ? "Née" : (f.sexe === "H" ? "Né" : "Né(e)");
+    let ligneNaissance = f.nomNaissance ? `${nePrefix} ${f.nomNaissance}` : nePrefix;
+    if (f.ddn) ligneNaissance += ` le ${f.ddn}`;
+    if (f.sexe) ligneNaissance += ` (${f.sexe})`;
+    sections.push({ text: ligneNaissance, bold: false });
+
+    const ligneCp = [f.codepostal, f.commune].filter(Boolean).join(" ");
+    const ligneAdresse = [f.adresse, ligneCp].filter(Boolean).join(" ");
+    if (ligneAdresse) sections.push({ text: ligneAdresse, bold: false });
+
+    if (sections.length === 0) sections.push({ text: "(étiquette vide)", bold: false });
+    return sections;
+  }
+
+  function breakLongWord(ctx, word, maxWidth, font) {
+    ctx.font = font;
+    if (ctx.measureText(word).width <= maxWidth) return [word];
+    const parts = word.split("-");
+    if (parts.length > 1) {
+      return parts.slice(0, -1).map((p) => p + "-").concat([parts[parts.length - 1]]);
+    }
+    return [word];
+  }
+
+  function wrapText(ctx, text, font, maxWidth) {
+    ctx.font = font;
+    let lines = [];
+    let current = "";
+    const words = text.split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      const toks = breakLongWord(ctx, word, maxWidth, font);
+      for (let idx = 0; idx < toks.length; idx++) {
+        const tok = toks[idx];
+        const sep = idx > 0 ? "" : (current ? " " : "");
+        const candidate = current + sep + tok;
+        ctx.font = font;
+        if (ctx.measureText(candidate).width <= maxWidth || !current) {
+          current = candidate;
+        } else {
+          lines.push(current);
+          current = tok;
+        }
+      }
+    }
+    if (current) lines.push(current);
+
+    // Filet de sécurité : découpe caractère par caractère si une ligne reste trop large.
+    const finalLines = [];
+    for (let line of lines) {
+      ctx.font = font;
+      while (ctx.measureText(line).width > maxWidth && line.length > 1) {
+        let best = 1;
+        for (let k = 1; k <= line.length; k++) {
+          if (ctx.measureText(line.slice(0, k)).width <= maxWidth) best = k;
+          else break;
+        }
+        finalLines.push(line.slice(0, best));
+        line = line.slice(best);
+      }
+      finalLines.push(line);
+    }
+    return finalLines;
+  }
+
+  const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+
+  // Construit le canevas "à plat" (400 x 96, dans le sens de lecture normal),
+  // avec la plus grande police qui tient sur les 96px de hauteur disponible.
+  function buildLandscapeCanvas(fields) {
+    const sections = buildSections(fields);
+    const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
+    const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
+
+    const measureCanvas = document.createElement("canvas");
+    const mctx = measureCanvas.getContext("2d");
+
+    let chosen = null;
+    for (let size = 60; size >= 8; size--) {
+      const regSize = Math.max(size - 3, 8);
+      const boldFont = `bold ${size}px ${FONT_FAMILY}`;
+      const regFont = `${regSize}px ${FONT_FAMILY}`;
+      let lines = [];
+      for (const sec of sections) {
+        const font = sec.bold ? boldFont : regFont;
+        const fSize = sec.bold ? size : regSize;
+        for (const line of wrapText(mctx, sec.text, font, maxTextWidth)) {
+          lines.push({ text: line, font, bold: sec.bold, fSize });
+        }
+      }
+      const heights = lines.map((l) => Math.round(l.fSize * 1.22) + 3);
+      const totalH = heights.reduce((a, b) => a + b, 0);
+      if (totalH <= maxStackHeight) {
+        chosen = { lines, heights, totalH };
+        break;
+      }
+    }
+    if (!chosen) {
+      const font = `8px ${FONT_FAMILY}`;
+      let lines = [];
+      for (const sec of sections) {
+        for (const line of wrapText(mctx, sec.text, font, maxTextWidth)) {
+          lines.push({ text: line, font, bold: sec.bold, fSize: 8 });
+        }
+      }
+      const heights = lines.map(() => Math.round(8 * 1.22) + 3);
+      chosen = { lines, heights, totalH: heights.reduce((a, b) => a + b, 0) };
+    }
+
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "top";
+
+    let y = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
+    for (let i = 0; i < chosen.lines.length; i++) {
+      const { text, font, bold } = chosen.lines[i];
+      ctx.font = font;
+      const w = ctx.measureText(text).width;
+      const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - w) / 2) + HORIZONTAL_SHIFT_PX);
+      ctx.fillText(text, x, y);
+      if (bold) ctx.fillText(text, x + 1, y); // léger renfort du gras
+      y += chosen.heights[i];
+    }
+    return landscape;
+  }
+
+  // Convertit le canevas "à plat" (Wc x 96) en raster 1-bit pivoté pour la tête
+  // d'impression (96 x Wc), équivalent à PIL rotate(-90, expand=True).
+  function landscapeToRaster(landscape) {
+    const Wc = landscape.width;
+    const Hc = landscape.height; // 96
+    const ctx = landscape.getContext("2d");
+    const imgData = ctx.getImageData(0, 0, Wc, Hc).data;
+
+    function srcIsBlack(sx, sy) {
+      const idx = (sy * Wc + sx) * 4;
+      const gray = (imgData[idx] + imgData[idx + 1] + imgData[idx + 2]) / 3;
+      return gray < 128;
+    }
+
+    const rows = Wc;
+    const raster = new Uint8Array(rows * BYTES_PER_ROW);
+
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < Hc; tx++) {
+        // target[x=tx, y=ty] = source[y=ty, Hc-1-x=Hc-1-tx]  (rotation -90°/horaire)
+        const sx = ty;
+        const sy = Hc - 1 - tx;
+        if (srcIsBlack(sx, sy)) {
+          const byteIdx = ty * BYTES_PER_ROW + (tx >> 3);
+          const bitPos = 7 - (tx & 7);
+          raster[byteIdx] |= (1 << bitPos);
+        }
+      }
+    }
+    return { raster, rows };
+  }
+
+  // --- Bluetooth (Web Bluetooth API, via Bluefy sur iPhone) --------------
+
+  let btDevice = null;
+  let btServer = null;
+  let writeChar = null;
+  let notifyChar = null;
+  let notifyBuffer = [];
+  let notifyResolvers = [];
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  function onNotify(event) {
+    const value = event.target.value; // DataView
+    const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    for (const b of bytes) notifyBuffer.push(b);
+    if (notifyResolvers.length) {
+      const resolve = notifyResolvers.shift();
+      resolve();
+    }
+  }
+
+  async function ensureConnected() {
+    if (btDevice && btDevice.gatt.connected && writeChar) return;
+    if (!navigator.bluetooth) {
+      throw new Error("Bluetooth non disponible dans ce navigateur. Ouvrez cette page avec Bluefy.");
+    }
+    btDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "FICHERO" }, { namePrefix: "D11s_" }],
+      optionalServices: [SERVICE_UUID],
+    });
+    btDevice.addEventListener("gattserverdisconnected", () => {
+      writeChar = null;
+      notifyChar = null;
+    });
+    btServer = await btDevice.gatt.connect();
+    const service = await btServer.getPrimaryService(SERVICE_UUID);
+    writeChar = await service.getCharacteristic(WRITE_UUID);
+    notifyChar = await service.getCharacteristic(NOTIFY_UUID);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener("characteristicvaluechanged", onNotify);
+  }
+
+  async function send(bytes, wait, timeoutMs) {
+    if (wait) notifyBuffer = [];
+    await writeChar.writeValue(new Uint8Array(bytes));
+    if (wait) {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Pas de réponse de l'imprimante")), timeoutMs || 2000);
+        notifyResolvers.push(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+      await sleep(50);
+    }
+    return new Uint8Array(notifyBuffer);
+  }
+
+  async function sendChunked(bytes) {
+    const chunkSize = 180;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      await writeChar.writeValue(bytes.slice(i, i + chunkSize));
+      await sleep(20);
+    }
+  }
+
+  async function getInfo() {
+    const model = await send([0x10, 0xff, 0x20, 0xf0], true);
+    const battery = await send([0x10, 0xff, 0x50, 0xf1], true);
+    const status = await send([0x10, 0xff, 0x40], true);
+    return {
+      model: new TextDecoder().decode(model).trim() || "?",
+      battery: battery.length >= 2 ? battery[battery.length - 1] : -1,
+      statusByte: status.length ? status[status.length - 1] : 0xff,
+    };
+  }
+
+  function describeStatus(byte) {
+    if (byte === 0) return "prête";
+    const flags = [];
+    if (byte & 0x01) flags.push("en cours d'impression");
+    if (byte & 0x02) flags.push("capot ouvert");
+    if (byte & 0x04) flags.push("plus de papier");
+    if (byte & 0x08) flags.push("batterie faible");
+    if (byte & 0x10 || byte & 0x40) flags.push("surchauffe");
+    if (byte & 0x20) flags.push("en charge");
+    return flags.length ? flags.join(", ") : "prête";
+  }
+
+  async function printLandscapeCanvas(landscape, copies, density) {
+    const { raster, rows } = landscapeToRaster(landscape);
+
+    await send([0x10, 0xff, 0x10, 0x00, density], true);
+    await sleep(100);
+
+    for (let c = 0; c < copies; c++) {
+      const status = await send([0x10, 0xff, 0x40], true);
+      const statusByte = status.length ? status[status.length - 1] : 0;
+      if (statusByte & 0x02 || statusByte & 0x04 || statusByte & 0x10 || statusByte & 0x40) {
+        throw new Error(`Imprimante non prête : ${describeStatus(statusByte)}`);
+      }
+
+      await send([0x10, 0xff, 0x84, 0x00]); // type de papier (gap)
+      await sleep(50);
+      await send(new Uint8Array(12)); // réveil
+      await sleep(50);
+      await send([0x10, 0xff, 0xfe, 0x01]); // activation (AiYin)
+      await sleep(50);
+
+      const yl = rows & 0xff;
+      const yh = (rows >> 8) & 0xff;
+      const header = new Uint8Array([0x1d, 0x76, 0x30, 0x00, BYTES_PER_ROW, 0x00, yl, yh]);
+      const payload = new Uint8Array(header.length + raster.length);
+      payload.set(header, 0);
+      payload.set(raster, header.length);
+      await sendChunked(payload);
+
+      await sleep(500);
+      await send([0x1d, 0x0c]); // avance à l'étiquette suivante
+      await sleep(300);
+      await send([0x10, 0xff, 0xfe, 0x45], true, 60000); // arrêt, attend confirmation
+    }
+  }
+
+  // --- Interface -----------------------------------------------------------
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    patientPicker: $("patientPicker"),
+    civilite: $("civilite"),
+    nom: $("nom"),
+    prenom: $("prenom"),
+    nomNaissance: $("nomNaissance"),
+    ddn: $("ddn"),
+    sexe: $("sexe"),
+    adresse: $("adresse"),
+    codepostal: $("codepostal"),
+    commune: $("commune"),
+    copies: $("copies"),
+    previewCanvas: $("previewCanvas"),
+    status: $("status"),
+    printerInfo: $("printerInfo"),
+    btnApercu: $("btnApercu"),
+    btnEffacer: $("btnEffacer"),
+    btnConnecter: $("btnConnecter"),
+    btnImprimer: $("btnImprimer"),
+    btnEnregistrer: $("btnEnregistrer"),
+  };
+
+  let patients = loadPatients();
+
+  function refreshPatientPicker(selectLabel) {
+    patients.sort((a, b) => (a.nom || "").localeCompare(b.nom || "") || (a.prenom || "").localeCompare(b.prenom || ""));
+    els.patientPicker.innerHTML = '<option value="">—</option>';
+    for (const p of patients) {
+      const opt = document.createElement("option");
+      opt.value = patientLabel(p);
+      opt.textContent = patientLabel(p);
+      els.patientPicker.appendChild(opt);
+    }
+    if (selectLabel) els.patientPicker.value = selectLabel;
+  }
+
+  function currentFields() {
+    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    return {
+      civilite: els.civilite.value.trim(),
+      nom: els.nom.value.trim().toUpperCase(),
+      prenom: capitalize(els.prenom.value.trim()),
+      nomNaissance: els.nomNaissance.value.trim().toUpperCase(),
+      ddn: els.ddn.value.trim(),
+      sexe: els.sexe.value.trim(),
+      adresse: els.adresse.value.trim(),
+      codepostal: els.codepostal.value.trim(),
+      commune: els.commune.value.trim().toUpperCase(),
+    };
+  }
+
+  function setStatus(text, kind) {
+    els.status.textContent = text;
+    els.status.className = kind || "";
+  }
+
+  function updatePreview() {
+    const fields = currentFields();
+    const landscape = buildLandscapeCanvas(fields);
+    const target = els.previewCanvas;
+    target.width = landscape.width;
+    target.height = landscape.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(landscape, 0, 0);
+    return landscape;
+  }
+
+  els.btnApercu.addEventListener("click", updatePreview);
+  ["input", "change"].forEach((evt) => {
+    [els.nom, els.prenom, els.nomNaissance, els.ddn, els.adresse, els.codepostal, els.commune, els.civilite, els.sexe]
+      .forEach((el) => el.addEventListener(evt, updatePreview));
+  });
+
+  els.btnEffacer.addEventListener("click", () => {
+    els.nom.value = "";
+    els.prenom.value = "";
+    els.nomNaissance.value = "";
+    els.ddn.value = "";
+    els.adresse.value = "";
+    els.codepostal.value = "";
+    els.commune.value = "";
+    els.civilite.value = "";
+    els.sexe.value = "";
+    els.copies.value = 3;
+    els.patientPicker.value = "";
+    updatePreview();
+    setStatus("Prêt.");
+  });
+
+  els.patientPicker.addEventListener("change", () => {
+    const label = els.patientPicker.value;
+    const match = patients.find((p) => patientLabel(p) === label);
+    if (!match) return;
+    els.civilite.value = match.civilite || "";
+    els.nom.value = match.nom || "";
+    els.prenom.value = match.prenom || "";
+    els.nomNaissance.value = match.nomNaissance || "";
+    els.ddn.value = match.ddn || "";
+    els.sexe.value = match.sexe || "";
+    els.adresse.value = match.adresse || "";
+    els.codepostal.value = match.codepostal || "";
+    els.commune.value = match.commune || "";
+    updatePreview();
+    setStatus(`Patient « ${label} » chargé.`);
+  });
+
+  els.btnEnregistrer.addEventListener("click", () => {
+    const f = currentFields();
+    if (!f.nom || !f.prenom) {
+      setStatus("Merci de renseigner au moins le nom et le prénom.", "err");
+      return;
+    }
+    const key = (p) => `${(p.nom || "").toUpperCase()}|${(p.prenom || "").toUpperCase()}|${p.ddn || ""}`;
+    const record = { ...f };
+    const idx = patients.findIndex((p) => key(p) === key(record));
+    if (idx >= 0) patients[idx] = record;
+    else patients.push(record);
+    savePatients(patients);
+    refreshPatientPicker(patientLabel(record));
+    setStatus(`Patient « ${patientLabel(record)} » enregistré.`, "ok");
+  });
+
+  els.btnConnecter.addEventListener("click", async () => {
+    els.btnConnecter.disabled = true;
+    setStatus("Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      const info = await getInfo();
+      els.printerInfo.textContent = `Modèle : ${info.model} · Batterie : ${info.battery}% · État : ${describeStatus(info.statusByte)}`;
+      setStatus("Imprimante connectée.", "ok");
+    } catch (e) {
+      setStatus(`Échec de connexion :\n${e.message || e}`, "err");
+    } finally {
+      els.btnConnecter.disabled = false;
+    }
+  });
+
+  els.btnImprimer.addEventListener("click", async () => {
+    const fields = currentFields();
+    if (!fields.nom || !fields.prenom) {
+      setStatus("Merci de renseigner au moins le nom et le prénom.", "err");
+      return;
+    }
+    let copies = parseInt(els.copies.value, 10);
+    if (!Number.isFinite(copies)) copies = 1;
+    copies = Math.max(1, Math.min(30, copies));
+
+    const landscape = updatePreview();
+
+    els.btnImprimer.disabled = true;
+    setStatus("Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      setStatus("Impression en cours…");
+      await printLandscapeCanvas(landscape, copies, DENSITY);
+      setStatus(`${copies} étiquette(s) imprimée(s).`, "ok");
+    } catch (e) {
+      setStatus(`Erreur :\n${e.message || e}`, "err");
+    } finally {
+      els.btnImprimer.disabled = false;
+    }
+  });
+
+  // Initialisation
+  refreshPatientPicker();
+  updatePreview();
+})();
+</script>
+
+</body>
+</html>
