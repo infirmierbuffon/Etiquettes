@@ -7,12 +7,24 @@
 <style>
   :root {
     color-scheme: light;
-    --accent: #2563eb;
-    --accent-dark: #1d4ed8;
     --ok: #2a7a2a;
     --err: #b3261e;
     --border: #d1d5db;
-    --bg: #f7f7f8;
+    --bg: #f4f6f9;
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+
+    --accent-patient: #2563eb;
+    --tint-patient: #eaf1ff;
+    --accent-patient-dark: #1d4ed8;
+
+    --accent-preleveur: #d97706;
+    --tint-preleveur: #fff6e8;
+    --accent-preleveur-dark: #b45309;
+
+    --accent-prep: #059669;
+    --tint-prep: #e9f9f1;
+    --accent-prep-dark: #047857;
   }
   * { box-sizing: border-box; }
   body {
@@ -20,7 +32,7 @@
     padding: 16px 16px 48px;
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
-    color: #1a1a1a;
+    color: var(--text-dark);
   }
   h1 {
     font-size: 20px;
@@ -28,21 +40,38 @@
   }
   .subtitle {
     font-size: 13px;
-    color: #666;
+    color: var(--text-muted);
     margin-bottom: 16px;
   }
   .card {
     background: #fff;
-    border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 16px;
     margin-bottom: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
   }
+  .card-header {
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 11px 14px;
+  }
+  .card-body {
+    padding: 14px;
+  }
+  .card-patient .card-header { background: var(--accent-patient); }
+  .card-patient .card-body { background: var(--tint-patient); }
+  .card-preleveur .card-header { background: var(--accent-preleveur); }
+  .card-preleveur .card-body { background: var(--tint-preleveur); }
+  .card-prep .card-header { background: var(--accent-prep); }
+  .card-prep .card-body { background: var(--tint-prep); }
+  .card-neutral .card-body { background: #fbfbfc; }
+
   label {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    color: #444;
+    color: var(--text-dark);
     margin-bottom: 4px;
     margin-top: 12px;
   }
@@ -62,8 +91,26 @@
   .row2 > div { flex: 1; }
   .hint {
     font-size: 12px;
-    color: #888;
+    color: var(--text-muted);
     margin-top: 2px;
+  }
+  .divider {
+    height: 1px;
+    background: rgba(0,0,0,0.08);
+    margin: 12px 0;
+  }
+  .picker-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .picker-row select { flex: 1; }
+  .picker-row button {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: auto;
+    padding: 10px 12px;
+    font-size: 13px;
   }
   .preview-wrap {
     overflow-x: auto;
@@ -71,8 +118,9 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px;
+    margin-top: 8px;
   }
-  canvas#previewCanvas {
+  canvas.preview-canvas {
     display: block;
     background: #fff;
   }
@@ -80,7 +128,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 14px;
   }
   button {
     flex: 1 1 auto;
@@ -90,35 +138,70 @@
     font-weight: 600;
     border: none;
     border-radius: 8px;
-    background: var(--accent);
+    background: #888;
     color: #fff;
     cursor: pointer;
   }
-  button:active { background: var(--accent-dark); }
+  button.btn-patient { background: var(--accent-patient); }
+  button.btn-patient:active { background: var(--accent-patient-dark); }
+  button.btn-preleveur { background: var(--accent-preleveur); }
+  button.btn-preleveur:active { background: var(--accent-preleveur-dark); }
+  button.btn-prep { background: var(--accent-prep); }
+  button.btn-prep:active { background: var(--accent-prep-dark); }
   button.secondary {
-    background: #eee;
+    background: #e5e7eb;
     color: #333;
   }
-  button:disabled {
-    opacity: 0.5;
-  }
-  #status {
-    margin-top: 12px;
+  button:disabled { opacity: 0.5; }
+
+  .status {
+    margin-top: 10px;
     font-size: 14px;
     white-space: pre-wrap;
   }
-  #status.ok { color: var(--ok); }
-  #status.err { color: var(--err); }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
   #printerInfo {
     font-size: 13px;
-    color: #555;
+    color: var(--text-muted);
     margin-top: 8px;
   }
   details summary {
     font-size: 13px;
-    color: #666;
+    color: var(--text-muted);
     cursor: pointer;
-    margin-top: 12px;
+    margin-top: 4px;
+  }
+
+  .tubes-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .tube-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 56px;
+  }
+  .tube-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    margin-bottom: 3px;
+  }
+  .tube-cell label {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .tube-cell input {
+    width: 100%;
+    padding: 6px 2px;
+    text-align: center;
+    font-size: 15px;
   }
 </style>
 </head>
@@ -127,76 +210,172 @@
 <h1>Étiquettes de prélèvement</h1>
 <div class="subtitle">Imprimante FICHERO Bluetooth — via Web Bluetooth (nécessite Bluefy sur iPhone)</div>
 
-<div class="card">
-  <label for="patientPicker">Patient enregistré</label>
-  <select id="patientPicker">
-    <option value="">—</option>
-  </select>
-
-  <label for="civilite">Civilité</label>
-  <select id="civilite">
-    <option value=""></option>
-    <option value="M">M</option>
-    <option value="Mme">Mme</option>
-  </select>
-
-  <label for="nom">Nom *</label>
-  <input type="text" id="nom" autocapitalize="characters">
-
-  <label for="prenom">Prénom *</label>
-  <input type="text" id="prenom" autocapitalize="words">
-
-  <label for="nomNaissance">Nom de naissance</label>
-  <input type="text" id="nomNaissance" autocapitalize="characters">
-
-  <label for="ddn">Date de naissance</label>
-  <input type="text" id="ddn" placeholder="JJ/MM/AAAA" inputmode="numeric">
-
-  <label for="sexe">Sexe</label>
-  <select id="sexe">
-    <option value=""></option>
-    <option value="H">H</option>
-    <option value="F">F</option>
-  </select>
-
-  <label for="adresse">Adresse</label>
-  <input type="text" id="adresse" placeholder="ex : 11 rue de l'Église">
-
-  <div class="row2">
-    <div>
-      <label for="codepostal">Code postal</label>
-      <input type="text" id="codepostal" inputmode="numeric">
+<div class="card card-neutral">
+  <div class="card-body">
+    <div class="buttons" style="margin-top:0">
+      <button id="btnConnecter" class="secondary" type="button">Connecter l'imprimante</button>
     </div>
-    <div>
-      <label for="commune">Commune</label>
-      <input type="text" id="commune" autocapitalize="characters">
-    </div>
-  </div>
-
-  <label for="copies">Nombre d'étiquettes</label>
-  <input type="number" id="copies" value="3" min="1" max="30">
-</div>
-
-<div class="card">
-  <label style="margin-top:0">Aperçu</label>
-  <div class="preview-wrap">
-    <canvas id="previewCanvas" width="400" height="96"></canvas>
-  </div>
-
-  <div class="buttons">
-    <button id="btnApercu" class="secondary" type="button">Aperçu</button>
-    <button id="btnEffacer" class="secondary" type="button">Effacer</button>
+    <div id="printerInfo"></div>
   </div>
 </div>
 
-<div class="card">
-  <div class="buttons">
-    <button id="btnConnecter" class="secondary" type="button">Connecter l'imprimante</button>
-    <button id="btnImprimer" type="button">Imprimer</button>
-    <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
+<!-- ============================= Étiquette patient ============================= -->
+<div class="card card-patient">
+  <div class="card-header">Étiquette patient</div>
+  <div class="card-body">
+    <label for="patientPicker">Patient enregistré</label>
+    <div class="picker-row">
+      <select id="patientPicker">
+        <option value="">—</option>
+      </select>
+      <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <label for="civilite">Civilité</label>
+    <select id="civilite">
+      <option value=""></option>
+      <option value="M">M</option>
+      <option value="Mme">Mme</option>
+    </select>
+
+    <label for="nom">Nom *</label>
+    <input type="text" id="nom" autocapitalize="characters">
+
+    <label for="prenom">Prénom *</label>
+    <input type="text" id="prenom" autocapitalize="words">
+
+    <label for="nomNaissance">Nom de naissance</label>
+    <input type="text" id="nomNaissance" autocapitalize="characters">
+
+    <label for="ddn">Date de naissance</label>
+    <input type="text" id="ddn" placeholder="JJ/MM/AAAA" inputmode="numeric">
+
+    <label for="sexe">Sexe</label>
+    <select id="sexe">
+      <option value=""></option>
+      <option value="H">H</option>
+      <option value="F">F</option>
+    </select>
+
+    <label for="adresse">Adresse</label>
+    <input type="text" id="adresse" placeholder="ex : 11 rue de l'Église">
+
+    <div class="row2">
+      <div>
+        <label for="codepostal">Code postal</label>
+        <input type="text" id="codepostal" inputmode="numeric">
+      </div>
+      <div>
+        <label for="commune">Commune</label>
+        <input type="text" id="commune" autocapitalize="characters">
+      </div>
+    </div>
+
+    <label for="copies">Nombre d'étiquettes</label>
+    <input type="number" id="copies" value="1" min="1" max="30">
+
+    <label style="margin-top:14px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="previewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimer" class="btn-patient" type="button">Imprimer</button>
+      <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
+      <button id="btnEffacer" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusPatient" class="status"></div>
   </div>
-  <div id="printerInfo"></div>
-  <div id="status"></div>
+</div>
+
+<!-- ============================= Préleveur et horodatage ============================= -->
+<div class="card card-preleveur">
+  <div class="card-header">Préleveur et horodatage</div>
+  <div class="card-body">
+    <label for="preleveurPicker">Préleveur</label>
+    <div class="picker-row">
+      <select id="preleveurPicker"></select>
+      <button id="btnNouveauPreleveur" class="btn-preleveur" type="button">Nouveau…</button>
+      <button id="btnSupprimerPreleveur" class="secondary" type="button">Supprimer</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <label>Date / Heure</label>
+    <div class="row2">
+      <div>
+        <input type="text" id="preleveurDate" placeholder="JJ/MM/AAAA" inputmode="numeric">
+      </div>
+      <div>
+        <input type="text" id="preleveurHeure" placeholder="HH:MM" inputmode="numeric">
+      </div>
+    </div>
+    <div class="hint">Modifiables pour un prélèvement antérieur ou ultérieur.</div>
+
+    <div class="buttons">
+      <button id="btnMaintenant" class="secondary" type="button">Maintenant</button>
+    </div>
+
+    <label style="margin-top:14px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="preleveurPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerPreleveur" class="btn-preleveur" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusPreleveur" class="status"></div>
+  </div>
+</div>
+
+<!-- ============================= Étiquette de préparation ============================= -->
+<div class="card card-prep">
+  <div class="card-header">Étiquette de préparation (prélèvement à venir)</div>
+  <div class="card-body">
+    <label for="prepNom">Nom *</label>
+    <input type="text" id="prepNom" autocapitalize="characters">
+
+    <label for="prepPrenom">Prénom *</label>
+    <input type="text" id="prepPrenom" autocapitalize="words">
+
+    <label for="prepDateOrdo">Date de l'ordonnance</label>
+    <div class="row2">
+      <div>
+        <input type="text" id="prepDateOrdo" placeholder="JJ/MM/AAAA" inputmode="numeric">
+      </div>
+      <div style="flex:0 0 auto">
+        <button id="btnPrepAujourdhui" class="secondary" type="button" style="min-width:0;padding:10px 12px;">Aujourd'hui</button>
+      </div>
+    </div>
+
+    <label for="prepPrescripteur">Prescripteur</label>
+    <input type="text" id="prepPrescripteur" placeholder="ex : CHU Dijon, Dr MACHIN">
+
+    <label for="prepDateRdv">Date et heure du RDV</label>
+    <input type="text" id="prepDateRdv" placeholder="JJ/MM/AAAA HH:MM">
+
+    <label>Tubes à prélever</label>
+    <div class="tubes-row" id="tubesContainer"></div>
+
+    <label for="prepAutresTubes">Autres tubes</label>
+    <input type="text" id="prepAutresTubes" placeholder="ex : 1 Rouge, 1 Rose">
+
+    <label for="prepCommentaire">Commentaire</label>
+    <input type="text" id="prepCommentaire" placeholder="ex : à congeler dans 30 min">
+
+    <label style="margin-top:14px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusPrep" class="status"></div>
+  </div>
 </div>
 
 <details>
@@ -206,8 +385,9 @@
     documenté par le projet open-source
     <a href="https://github.com/0xMH/fichero-printer" target="_blank" rel="noopener">fichero-printer</a>,
     licence MIT), sans passer par l'application FICHERO Printer.
-    Les patients enregistrés sont stockés uniquement dans ce téléphone
-    (mémoire du navigateur), jamais envoyés sur internet.
+    Les patients et préleveurs enregistrés sont stockés uniquement dans ce
+    téléphone (mémoire du navigateur), jamais envoyés sur internet — cette
+    liste est indépendante de celle de l'application Mac.
     Safari ne supporte pas le Bluetooth depuis une page web : cette page doit
     être ouverte avec l'appli <strong>Bluefy</strong> (gratuite, App Store).
   </p>
@@ -226,6 +406,8 @@
   const HORIZONTAL_SHIFT_PX = -16;                   // décale le texte de 2mm vers la gauche
   const DENSITY = 2;
   const BYTES_PER_ROW = PRINTHEAD_PX / 8;             // 12
+  const LINE_GAP = 3;
+  const FONT_FAMILY = "Arial, Helvetica, sans-serif";
 
   // --- Constantes Bluetooth (protocole FICHERO D11s / AiYin) -------------
   const SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
@@ -233,11 +415,11 @@
   const NOTIFY_UUID = "00002af0-0000-1000-8000-00805f9b34fb";
 
   // --- Mémorisation des patients (localStorage, propre à ce téléphone) ---
-  const STORAGE_KEY = "fichero_patients_v1";
+  const PATIENTS_KEY = "fichero_patients_v1";
 
   function loadPatients() {
     try {
-      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const data = JSON.parse(localStorage.getItem(PATIENTS_KEY));
       return Array.isArray(data) ? data : [];
     } catch (e) {
       return [];
@@ -245,7 +427,7 @@
   }
 
   function savePatients(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.setItem(PATIENTS_KEY, JSON.stringify(list));
   }
 
   function patientLabel(p) {
@@ -254,9 +436,45 @@
     return label;
   }
 
+  // --- Mémorisation des préleveurs ----------------------------------------
+  const PRELEVEURS_KEY = "fichero_preleveurs_v1";
+  const DEFAULT_PRELEVEURS = [
+    { nom: "GRAVIER Antoine", am: "216087692", rpps: "10103186952" },
+    { nom: "LAPLANTE Sébastien", am: "216041889", rpps: "10105059330" },
+  ];
+
+  function loadPreleveurs() {
+    try {
+      const data = JSON.parse(localStorage.getItem(PRELEVEURS_KEY));
+      if (Array.isArray(data) && data.length) return data;
+    } catch (e) { /* ignore */ }
+    const defaults = DEFAULT_PRELEVEURS.map((p) => ({ ...p }));
+    savePreleveurs(defaults);
+    return defaults;
+  }
+
+  function savePreleveurs(list) {
+    localStorage.setItem(PRELEVEURS_KEY, JSON.stringify(list));
+  }
+
+  // --- Tubes de prélèvement -----------------------------------------------
+  const TUBE_COLORS = ["Bleu", "Jaune", "Vert", "Violet", "Gris"];
+  const TUBE_SWATCHES = { Bleu: "#3b82f6", Jaune: "#eab308", Vert: "#22c55e", Violet: "#a855f7", Gris: "#9ca3af" };
+
+  function buildTubesTexte(quantities, autres) {
+    const parts = [];
+    for (const color of TUBE_COLORS) {
+      const qty = quantities[color] || 0;
+      if (qty > 0) parts.push(`${qty} ${color}`);
+    }
+    const a = (autres || "").trim();
+    if (a) parts.push(a);
+    return parts.join(", ");
+  }
+
   // --- Construction du contenu texte (mêmes règles que l'appli Mac) ------
 
-  function buildSections(f) {
+  function buildPatientSections(f) {
     const sections = [];
     const ligne1 = [f.civilite, f.nom, f.prenom].filter(Boolean).join(" ");
     if (ligne1) sections.push({ text: ligne1, bold: true });
@@ -272,6 +490,34 @@
     if (ligneAdresse) sections.push({ text: ligneAdresse, bold: false });
 
     if (sections.length === 0) sections.push({ text: "(étiquette vide)", bold: false });
+    return sections;
+  }
+
+  function buildPreleveurSections(nom, am, rpps, dateTexte, heureTexte) {
+    const sections = [];
+    if (nom) sections.push({ text: `Prélevé par ${nom}`, bold: true });
+    const idParts = [];
+    if (am) idParts.push(`AM ${am}`);
+    if (rpps) idParts.push(`RPPS ${rpps}`);
+    if (idParts.length) sections.push({ text: idParts.join(" - "), bold: false });
+    const dtParts = [];
+    if (dateTexte) dtParts.push(`le ${dateTexte}`);
+    if (heureTexte) dtParts.push(`à ${heureTexte}`);
+    if (dtParts.length) sections.push({ text: dtParts.join(" "), bold: false });
+    if (!sections.length) sections.push({ text: "(étiquette vide)", bold: false });
+    return sections;
+  }
+
+  function buildPrepSections(nom, prenom, dateOrdo, prescripteur, dateRdv, tubesTexte, commentaire) {
+    const sections = [];
+    const ligne1 = [nom, prenom].filter(Boolean).join(" ");
+    if (ligne1) sections.push({ text: ligne1, bold: true });
+    if (dateOrdo) sections.push({ text: `Ordo du ${dateOrdo}`, bold: false });
+    if (prescripteur) sections.push({ text: prescripteur, bold: false });
+    if (dateRdv) sections.push({ text: `RDV le ${dateRdv}`, bold: false });
+    if (tubesTexte) sections.push({ text: `Tubes : ${tubesTexte}`, bold: false });
+    if (commentaire) sections.push({ text: commentaire, bold: false });
+    if (!sections.length) sections.push({ text: "(étiquette vide)", bold: false });
     return sections;
   }
 
@@ -325,49 +571,58 @@
     return finalLines;
   }
 
-  const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+  // Mesure l'encre réelle d'une ligne (comme draw.textbbox en Python) : les métriques
+  // actualBoundingBoxAscent/Descent donnent le haut/bas réel du texte au-dessus/dessous
+  // de la ligne de base, ce qui évite le bug de dérive verticale rencontré avec une
+  // estimation approximative (ex : texte tout en chiffres, sans hampe ni jambage).
+  function measureLineInk(ctx, text, font) {
+    ctx.font = font;
+    const m = ctx.measureText(text);
+    const sizeMatch = /([\d.]+)px/.exec(font);
+    const approx = sizeMatch ? parseFloat(sizeMatch[1]) : 12;
+    const ascent = (typeof m.actualBoundingBoxAscent === "number" && m.actualBoundingBoxAscent > 0)
+      ? m.actualBoundingBoxAscent : approx * 0.78;
+    const descent = (typeof m.actualBoundingBoxDescent === "number" && m.actualBoundingBoxDescent >= 0)
+      ? m.actualBoundingBoxDescent : approx * 0.22;
+    return { ascent, descent, width: m.width };
+  }
 
-  // Construit le canevas "à plat" (400 x 96, dans le sens de lecture normal),
-  // avec la plus grande police qui tient sur les 96px de hauteur disponible.
-  function buildLandscapeCanvas(fields) {
-    const sections = buildSections(fields);
+  // Construit le canevas "à plat" (400 x 96, dans le sens de lecture normal), avec la
+  // plus grande police qui tient sur les 96px de hauteur disponible, en empilant les
+  // lignes selon leur encre réelle (pas une hauteur de police approximative).
+  function composeSectionsCanvas(rawSections) {
     const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
     const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
 
     const measureCanvas = document.createElement("canvas");
     const mctx = measureCanvas.getContext("2d");
 
-    let chosen = null;
-    for (let size = 60; size >= 8; size--) {
+    function layoutAtSize(size) {
       const regSize = Math.max(size - 3, 8);
       const boldFont = `bold ${size}px ${FONT_FAMILY}`;
       const regFont = `${regSize}px ${FONT_FAMILY}`;
       let lines = [];
-      for (const sec of sections) {
+      for (const sec of rawSections) {
         const font = sec.bold ? boldFont : regFont;
-        const fSize = sec.bold ? size : regSize;
         for (const line of wrapText(mctx, sec.text, font, maxTextWidth)) {
-          lines.push({ text: line, font, bold: sec.bold, fSize });
+          const ink = measureLineInk(mctx, line, font);
+          lines.push({ text: line, font, bold: sec.bold, ...ink });
         }
       }
-      const heights = lines.map((l) => Math.round(l.fSize * 1.22) + 3);
-      const totalH = heights.reduce((a, b) => a + b, 0);
-      if (totalH <= maxStackHeight) {
-        chosen = { lines, heights, totalH };
+      const totalH = lines.reduce((sum, l) => sum + l.ascent + l.descent, 0)
+        + LINE_GAP * Math.max(lines.length - 1, 0);
+      return { lines, totalH };
+    }
+
+    let chosen = null;
+    for (let size = 60; size >= 8; size--) {
+      const layout = layoutAtSize(size);
+      if (layout.totalH <= maxStackHeight) {
+        chosen = layout;
         break;
       }
     }
-    if (!chosen) {
-      const font = `8px ${FONT_FAMILY}`;
-      let lines = [];
-      for (const sec of sections) {
-        for (const line of wrapText(mctx, sec.text, font, maxTextWidth)) {
-          lines.push({ text: line, font, bold: sec.bold, fSize: 8 });
-        }
-      }
-      const heights = lines.map(() => Math.round(8 * 1.22) + 3);
-      chosen = { lines, heights, totalH: heights.reduce((a, b) => a + b, 0) };
-    }
+    if (!chosen) chosen = layoutAtSize(8); // filet de sécurité : taille minimale
 
     const landscape = document.createElement("canvas");
     landscape.width = MAX_ROWS;
@@ -376,17 +631,16 @@
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
     ctx.fillStyle = "#000";
-    ctx.textBaseline = "top";
+    ctx.textBaseline = "alphabetic";
 
-    let y = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
-    for (let i = 0; i < chosen.lines.length; i++) {
-      const { text, font, bold } = chosen.lines[i];
-      ctx.font = font;
-      const w = ctx.measureText(text).width;
-      const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - w) / 2) + HORIZONTAL_SHIFT_PX);
-      ctx.fillText(text, x, y);
-      if (bold) ctx.fillText(text, x + 1, y); // léger renfort du gras
-      y += chosen.heights[i];
+    let cursor = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
+    for (const line of chosen.lines) {
+      ctx.font = line.font;
+      const baselineY = cursor + line.ascent;
+      const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      ctx.fillText(line.text, x, baselineY);
+      if (line.bold) ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
+      cursor += line.ascent + line.descent + LINE_GAP;
     }
     return landscape;
   }
@@ -553,7 +807,9 @@
 
   const $ = (id) => document.getElementById(id);
   const els = {
+    // patient
     patientPicker: $("patientPicker"),
+    btnSupprimerPatient: $("btnSupprimerPatient"),
     civilite: $("civilite"),
     nom: $("nom"),
     prenom: $("prenom"),
@@ -565,16 +821,48 @@
     commune: $("commune"),
     copies: $("copies"),
     previewCanvas: $("previewCanvas"),
-    status: $("status"),
-    printerInfo: $("printerInfo"),
-    btnApercu: $("btnApercu"),
+    statusPatient: $("statusPatient"),
     btnEffacer: $("btnEffacer"),
-    btnConnecter: $("btnConnecter"),
     btnImprimer: $("btnImprimer"),
     btnEnregistrer: $("btnEnregistrer"),
+    // préleveur
+    preleveurPicker: $("preleveurPicker"),
+    btnNouveauPreleveur: $("btnNouveauPreleveur"),
+    btnSupprimerPreleveur: $("btnSupprimerPreleveur"),
+    preleveurDate: $("preleveurDate"),
+    preleveurHeure: $("preleveurHeure"),
+    btnMaintenant: $("btnMaintenant"),
+    preleveurPreviewCanvas: $("preleveurPreviewCanvas"),
+    statusPreleveur: $("statusPreleveur"),
+    btnImprimerPreleveur: $("btnImprimerPreleveur"),
+    // préparation
+    prepNom: $("prepNom"),
+    prepPrenom: $("prepPrenom"),
+    prepDateOrdo: $("prepDateOrdo"),
+    btnPrepAujourdhui: $("btnPrepAujourdhui"),
+    prepPrescripteur: $("prepPrescripteur"),
+    prepDateRdv: $("prepDateRdv"),
+    tubesContainer: $("tubesContainer"),
+    prepAutresTubes: $("prepAutresTubes"),
+    prepCommentaire: $("prepCommentaire"),
+    prepPreviewCanvas: $("prepPreviewCanvas"),
+    statusPrep: $("statusPrep"),
+    btnImprimerPrep: $("btnImprimerPrep"),
+    btnEffacerPrep: $("btnEffacerPrep"),
+    // global
+    btnConnecter: $("btnConnecter"),
+    printerInfo: $("printerInfo"),
   };
 
+  function setStatus(el, text, kind) {
+    el.textContent = text;
+    el.className = "status" + (kind ? " " + kind : "");
+  }
+
+  // ===================== Patient =====================
+
   let patients = loadPatients();
+  let selectedPatientRecord = null; // référence vers le patient chargé, pour modifier sans dupliquer
 
   function refreshPatientPicker(selectLabel) {
     patients.sort((a, b) => (a.nom || "").localeCompare(b.nom || "") || (a.prenom || "").localeCompare(b.prenom || ""));
@@ -603,14 +891,9 @@
     };
   }
 
-  function setStatus(text, kind) {
-    els.status.textContent = text;
-    els.status.className = kind || "";
-  }
-
   function updatePreview() {
     const fields = currentFields();
-    const landscape = buildLandscapeCanvas(fields);
+    const landscape = composeSectionsCanvas(buildPatientSections(fields));
     const target = els.previewCanvas;
     target.width = landscape.width;
     target.height = landscape.height;
@@ -620,7 +903,6 @@
     return landscape;
   }
 
-  els.btnApercu.addEventListener("click", updatePreview);
   ["input", "change"].forEach((evt) => {
     [els.nom, els.prenom, els.nomNaissance, els.ddn, els.adresse, els.codepostal, els.commune, els.civilite, els.sexe]
       .forEach((el) => el.addEventListener(evt, updatePreview));
@@ -636,16 +918,18 @@
     els.commune.value = "";
     els.civilite.value = "";
     els.sexe.value = "";
-    els.copies.value = 3;
+    els.copies.value = 1;
     els.patientPicker.value = "";
+    selectedPatientRecord = null;
     updatePreview();
-    setStatus("Prêt.");
+    setStatus(els.statusPatient, "Prêt.");
   });
 
   els.patientPicker.addEventListener("change", () => {
     const label = els.patientPicker.value;
     const match = patients.find((p) => patientLabel(p) === label);
-    if (!match) return;
+    if (!match) { selectedPatientRecord = null; return; }
+    selectedPatientRecord = match;
     els.civilite.value = match.civilite || "";
     els.nom.value = match.nom || "";
     els.prenom.value = match.prenom || "";
@@ -656,44 +940,54 @@
     els.codepostal.value = match.codepostal || "";
     els.commune.value = match.commune || "";
     updatePreview();
-    setStatus(`Patient « ${label} » chargé.`);
+    setStatus(els.statusPatient, `Patient « ${label} » chargé.`);
   });
 
   els.btnEnregistrer.addEventListener("click", () => {
     const f = currentFields();
     if (!f.nom || !f.prenom) {
-      setStatus("Merci de renseigner au moins le nom et le prénom.", "err");
+      setStatus(els.statusPatient, "Merci de renseigner au moins le nom et le prénom.", "err");
       return;
     }
-    const key = (p) => `${(p.nom || "").toUpperCase()}|${(p.prenom || "").toUpperCase()}|${p.ddn || ""}`;
     const record = { ...f };
-    const idx = patients.findIndex((p) => key(p) === key(record));
-    if (idx >= 0) patients[idx] = record;
-    else patients.push(record);
+    // Si un patient de la liste était chargé, on modifie CE patient précis (même si
+    // le nom/prénom/DDN ont changé), pour éviter de dupliquer en cas de correction.
+    if (selectedPatientRecord && patients.includes(selectedPatientRecord)) {
+      const idx = patients.indexOf(selectedPatientRecord);
+      patients[idx] = record;
+    } else {
+      const key = (p) => `${(p.nom || "").toUpperCase()}|${(p.prenom || "").toUpperCase()}|${p.ddn || ""}`;
+      const idx = patients.findIndex((p) => key(p) === key(record));
+      if (idx >= 0) patients[idx] = record;
+      else patients.push(record);
+    }
     savePatients(patients);
+    selectedPatientRecord = record;
     refreshPatientPicker(patientLabel(record));
-    setStatus(`Patient « ${patientLabel(record)} » enregistré.`, "ok");
+    setStatus(els.statusPatient, `Patient « ${patientLabel(record)} » enregistré.`, "ok");
   });
 
-  els.btnConnecter.addEventListener("click", async () => {
-    els.btnConnecter.disabled = true;
-    setStatus("Connexion à l'imprimante FICHERO…");
-    try {
-      await ensureConnected();
-      const info = await getInfo();
-      els.printerInfo.textContent = `Modèle : ${info.model} · Batterie : ${info.battery}% · État : ${describeStatus(info.statusByte)}`;
-      setStatus("Imprimante connectée.", "ok");
-    } catch (e) {
-      setStatus(`Échec de connexion :\n${e.message || e}`, "err");
-    } finally {
-      els.btnConnecter.disabled = false;
+  els.btnSupprimerPatient.addEventListener("click", () => {
+    const label = els.patientPicker.value;
+    if (!label) {
+      setStatus(els.statusPatient, "Choisissez d'abord un patient dans la liste.", "err");
+      return;
     }
+    const match = patients.find((p) => patientLabel(p) === label);
+    if (!match) return;
+    if (!confirm(`Supprimer définitivement « ${label} » de la liste des patients enregistrés ?`)) return;
+    patients = patients.filter((p) => p !== match);
+    savePatients(patients);
+    selectedPatientRecord = null;
+    els.btnEffacer.click();
+    refreshPatientPicker();
+    setStatus(els.statusPatient, `Patient « ${label} » supprimé.`, "err");
   });
 
   els.btnImprimer.addEventListener("click", async () => {
     const fields = currentFields();
     if (!fields.nom || !fields.prenom) {
-      setStatus("Merci de renseigner au moins le nom et le prénom.", "err");
+      setStatus(els.statusPatient, "Merci de renseigner au moins le nom et le prénom.", "err");
       return;
     }
     let copies = parseInt(els.copies.value, 10);
@@ -703,22 +997,260 @@
     const landscape = updatePreview();
 
     els.btnImprimer.disabled = true;
-    setStatus("Connexion à l'imprimante FICHERO…");
+    setStatus(els.statusPatient, "Connexion à l'imprimante FICHERO…");
     try {
       await ensureConnected();
-      setStatus("Impression en cours…");
+      setStatus(els.statusPatient, "Impression en cours…");
       await printLandscapeCanvas(landscape, copies, DENSITY);
-      setStatus(`${copies} étiquette(s) imprimée(s).`, "ok");
+      setStatus(els.statusPatient, `${copies} étiquette(s) imprimée(s).`, "ok");
     } catch (e) {
-      setStatus(`Erreur :\n${e.message || e}`, "err");
+      setStatus(els.statusPatient, `Erreur :\n${e.message || e}`, "err");
     } finally {
       els.btnImprimer.disabled = false;
+    }
+  });
+
+  // ===================== Préleveur et horodatage =====================
+
+  let preleveurs = loadPreleveurs();
+
+  function refreshPreleveurPicker(selectNom) {
+    preleveurs.sort((a, b) => (a.nom || "").localeCompare(b.nom || ""));
+    els.preleveurPicker.innerHTML = "";
+    for (const p of preleveurs) {
+      const opt = document.createElement("option");
+      opt.value = p.nom;
+      opt.textContent = p.nom;
+      els.preleveurPicker.appendChild(opt);
+    }
+    if (selectNom) {
+      els.preleveurPicker.value = selectNom;
+    } else if (preleveurs.length && !els.preleveurPicker.value) {
+      els.preleveurPicker.value = preleveurs[0].nom;
+    }
+  }
+
+  function selectedPreleveur() {
+    const nom = els.preleveurPicker.value.trim();
+    const match = preleveurs.find((p) => p.nom === nom);
+    return { nom, am: match ? (match.am || "") : "", rpps: match ? (match.rpps || "") : "" };
+  }
+
+  function updatePreleveurPreview() {
+    const { nom, am, rpps } = selectedPreleveur();
+    const dateTexte = els.preleveurDate.value.trim();
+    const heureTexte = els.preleveurHeure.value.trim();
+    const landscape = composeSectionsCanvas(buildPreleveurSections(nom, am, rpps, dateTexte, heureTexte));
+    const target = els.preleveurPreviewCanvas;
+    target.width = landscape.width;
+    target.height = landscape.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(landscape, 0, 0);
+    return landscape;
+  }
+
+  els.preleveurPicker.addEventListener("change", updatePreleveurPreview);
+  ["input", "change"].forEach((evt) => {
+    [els.preleveurDate, els.preleveurHeure].forEach((el) => el.addEventListener(evt, updatePreleveurPreview));
+  });
+
+  els.btnMaintenant.addEventListener("click", () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    els.preleveurDate.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+    els.preleveurHeure.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    updatePreleveurPreview();
+  });
+
+  els.btnNouveauPreleveur.addEventListener("click", () => {
+    const nom = (prompt("Nom du préleveur :") || "").trim();
+    if (!nom) return;
+    const am = (prompt("N° AM :") || "").trim();
+    const rpps = (prompt("N° RPPS :") || "").trim();
+    const record = { nom, am, rpps };
+    const idx = preleveurs.findIndex((p) => p.nom.toLowerCase() === nom.toLowerCase());
+    if (idx >= 0) preleveurs[idx] = record;
+    else preleveurs.push(record);
+    savePreleveurs(preleveurs);
+    refreshPreleveurPicker(nom);
+    updatePreleveurPreview();
+    setStatus(els.statusPreleveur, `Préleveur « ${nom} » enregistré.`, "ok");
+  });
+
+  els.btnSupprimerPreleveur.addEventListener("click", () => {
+    const nom = els.preleveurPicker.value;
+    if (!nom) return;
+    if (!confirm(`Supprimer définitivement « ${nom} » de la liste des préleveurs ?`)) return;
+    preleveurs = preleveurs.filter((p) => p.nom !== nom);
+    savePreleveurs(preleveurs);
+    els.preleveurPicker.value = "";
+    refreshPreleveurPicker();
+    updatePreleveurPreview();
+    setStatus(els.statusPreleveur, `Préleveur « ${nom} » supprimé.`, "err");
+  });
+
+  els.btnImprimerPreleveur.addEventListener("click", async () => {
+    const { nom, am, rpps } = selectedPreleveur();
+    const dateTexte = els.preleveurDate.value.trim();
+    const heureTexte = els.preleveurHeure.value.trim();
+    if (!nom) {
+      setStatus(els.statusPreleveur, "Merci de choisir un préleveur.", "err");
+      return;
+    }
+    if (!dateTexte && !heureTexte) {
+      setStatus(els.statusPreleveur, "Merci de renseigner au moins la date ou l'heure.", "err");
+      return;
+    }
+
+    const landscape = updatePreleveurPreview();
+
+    els.btnImprimerPreleveur.disabled = true;
+    setStatus(els.statusPreleveur, "Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      setStatus(els.statusPreleveur, "Impression en cours…");
+      await printLandscapeCanvas(landscape, 1, DENSITY);
+      setStatus(els.statusPreleveur, "Étiquette imprimée.", "ok");
+    } catch (e) {
+      setStatus(els.statusPreleveur, `Erreur :\n${e.message || e}`, "err");
+    } finally {
+      els.btnImprimerPreleveur.disabled = false;
+    }
+  });
+
+  // ===================== Étiquette de préparation =====================
+
+  const tubeInputs = {};
+  for (const color of TUBE_COLORS) {
+    const cell = document.createElement("div");
+    cell.className = "tube-cell";
+    const swatch = document.createElement("div");
+    swatch.className = "tube-swatch";
+    swatch.style.background = TUBE_SWATCHES[color] || "#9ca3af";
+    const label = document.createElement("label");
+    label.textContent = color;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = "9";
+    input.value = "0";
+    input.inputMode = "numeric";
+    cell.appendChild(swatch);
+    cell.appendChild(label);
+    cell.appendChild(input);
+    els.tubesContainer.appendChild(cell);
+    tubeInputs[color] = input;
+    input.addEventListener("input", updatePrepPreview);
+    input.addEventListener("change", updatePrepPreview);
+  }
+
+  function prepFields() {
+    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    const quantities = {};
+    for (const color of TUBE_COLORS) {
+      const v = parseInt(tubeInputs[color].value, 10);
+      quantities[color] = Number.isFinite(v) ? v : 0;
+    }
+    return {
+      nom: els.prepNom.value.trim().toUpperCase(),
+      prenom: capitalize(els.prepPrenom.value.trim()),
+      dateOrdo: els.prepDateOrdo.value.trim(),
+      prescripteur: els.prepPrescripteur.value.trim(),
+      dateRdv: els.prepDateRdv.value.trim(),
+      tubesTexte: buildTubesTexte(quantities, els.prepAutresTubes.value.trim()),
+      commentaire: els.prepCommentaire.value.trim(),
+    };
+  }
+
+  function updatePrepPreview() {
+    const f = prepFields();
+    const landscape = composeSectionsCanvas(
+      buildPrepSections(f.nom, f.prenom, f.dateOrdo, f.prescripteur, f.dateRdv, f.tubesTexte, f.commentaire)
+    );
+    const target = els.prepPreviewCanvas;
+    target.width = landscape.width;
+    target.height = landscape.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(landscape, 0, 0);
+    return landscape;
+  }
+
+  ["input", "change"].forEach((evt) => {
+    [els.prepNom, els.prepPrenom, els.prepDateOrdo, els.prepPrescripteur, els.prepDateRdv, els.prepAutresTubes, els.prepCommentaire]
+      .forEach((el) => el.addEventListener(evt, updatePrepPreview));
+  });
+
+  els.btnPrepAujourdhui.addEventListener("click", () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    els.prepDateOrdo.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+    updatePrepPreview();
+  });
+
+  els.btnEffacerPrep.addEventListener("click", () => {
+    els.prepNom.value = "";
+    els.prepPrenom.value = "";
+    els.prepDateOrdo.value = "";
+    els.prepPrescripteur.value = "";
+    els.prepDateRdv.value = "";
+    for (const color of TUBE_COLORS) tubeInputs[color].value = "0";
+    els.prepAutresTubes.value = "";
+    els.prepCommentaire.value = "";
+    updatePrepPreview();
+    setStatus(els.statusPrep, "Prêt.");
+  });
+
+  els.btnImprimerPrep.addEventListener("click", async () => {
+    const f = prepFields();
+    if (!f.nom || !f.prenom) {
+      setStatus(els.statusPrep, "Merci de renseigner au moins le nom et le prénom.", "err");
+      return;
+    }
+
+    const landscape = updatePrepPreview();
+
+    els.btnImprimerPrep.disabled = true;
+    setStatus(els.statusPrep, "Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      setStatus(els.statusPrep, "Impression en cours…");
+      await printLandscapeCanvas(landscape, 1, DENSITY);
+      setStatus(els.statusPrep, "Étiquette de préparation imprimée.", "ok");
+    } catch (e) {
+      setStatus(els.statusPrep, `Erreur :\n${e.message || e}`, "err");
+    } finally {
+      els.btnImprimerPrep.disabled = false;
+    }
+  });
+
+  // ===================== Connexion imprimante (globale) =====================
+
+  els.btnConnecter.addEventListener("click", async () => {
+    els.btnConnecter.disabled = true;
+    els.printerInfo.textContent = "Connexion à l'imprimante FICHERO…";
+    try {
+      await ensureConnected();
+      const info = await getInfo();
+      els.printerInfo.textContent = `Modèle : ${info.model} · Batterie : ${info.battery}% · État : ${describeStatus(info.statusByte)}`;
+    } catch (e) {
+      els.printerInfo.textContent = `Échec de connexion : ${e.message || e}`;
+    } finally {
+      els.btnConnecter.disabled = false;
     }
   });
 
   // Initialisation
   refreshPatientPicker();
   updatePreview();
+  refreshPreleveurPicker();
+  const now0 = new Date();
+  const pad0 = (n) => String(n).padStart(2, "0");
+  els.preleveurDate.value = `${pad0(now0.getDate())}/${pad0(now0.getMonth() + 1)}/${now0.getFullYear()}`;
+  els.preleveurHeure.value = `${pad0(now0.getHours())}:${pad0(now0.getMinutes())}`;
+  updatePreleveurPreview();
+  updatePrepPreview();
 })();
 </script>
 
