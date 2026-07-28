@@ -206,6 +206,25 @@
     text-align: center;
     font-size: 15px;
   }
+
+  .toggles-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 6px;
+  }
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dark);
+  }
+  .toggle-item input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+  }
 </style>
 </head>
 <body>
@@ -274,6 +293,26 @@
         <label for="commune">Commune</label>
         <input type="text" id="commune" autocapitalize="characters">
       </div>
+    </div>
+
+    <label for="telephone">Téléphone</label>
+    <input type="text" id="telephone" inputmode="tel">
+    <div class="hint">usage interne, jamais sur l'étiquette</div>
+
+    <label for="email">Email</label>
+    <input type="text" id="email" inputmode="email" autocapitalize="none">
+
+    <label for="nir">NIR (n° de sécu)</label>
+    <input type="text" id="nir" inputmode="numeric">
+
+    <div class="divider"></div>
+
+    <label>Sur l'étiquette :</label>
+    <div class="toggles-row">
+      <span class="toggle-item"><input type="checkbox" id="showNaissance" checked>Naissance</span>
+      <span class="toggle-item"><input type="checkbox" id="showAdresse" checked>Adresse</span>
+      <span class="toggle-item"><input type="checkbox" id="showEmail">Email</span>
+      <span class="toggle-item"><input type="checkbox" id="showNir">NIR</span>
     </div>
 
     <label for="copies">Nombre d'étiquettes</label>
@@ -463,12 +502,14 @@
   // --- Tubes de prélèvement -----------------------------------------------
   const TUBE_COLORS = ["Bleu", "Jaune", "Vert", "Violet", "Gris"];
   const TUBE_SWATCHES = { Bleu: "#3b82f6", Jaune: "#eab308", Vert: "#22c55e", Violet: "#a855f7", Gris: "#9ca3af" };
+  // Abréviations utilisées sur l'étiquette imprimée (le formulaire garde les noms complets).
+  const TUBE_ABBR = { Bleu: "Bl", Jaune: "Ja", Vert: "Ve", Violet: "Vi", Gris: "Gr" };
 
   function buildTubesTexte(quantities, autres) {
     const parts = [];
     for (const color of TUBE_COLORS) {
       const qty = quantities[color] || 0;
-      if (qty > 0) parts.push(`${qty} ${color}`);
+      if (qty > 0) parts.push(`${qty} ${TUBE_ABBR[color] || color}`);
     }
     const a = (autres || "").trim();
     if (a) parts.push(a);
@@ -476,51 +517,64 @@
   }
 
   // --- Construction du contenu texte (mêmes règles que l'appli Mac) ------
+  // Chaque section a un "weight" : "bold" (titre, mis en avant), "regular" (info normale,
+  // ces sections-là s'enchaînent sur la même ligne tant qu'il reste de la place) ou
+  // "small" (info secondaire, affichée nettement plus petite).
 
-  function buildPatientSections(f) {
+  function buildPatientSections(f, toggles) {
+    toggles = toggles || {};
     const sections = [];
-    const ligne1 = [f.civilite, f.nom, f.prenom].filter(Boolean).join(" ");
-    if (ligne1) sections.push({ text: ligne1, bold: true });
+    const civiliteAffichee = { M: "M.", Mme: "Mme." }[f.civilite] || f.civilite;
+    const ligne1 = [civiliteAffichee, f.nom, f.prenom].filter(Boolean).join(" ");
+    if (ligne1) sections.push({ text: ligne1, weight: "bold" });
 
-    let nePrefix = f.sexe === "F" ? "Née" : (f.sexe === "H" ? "Né" : "Né(e)");
-    let ligneNaissance = f.nomNaissance ? `${nePrefix} ${f.nomNaissance}` : nePrefix;
-    if (f.ddn) ligneNaissance += ` le ${f.ddn}`;
-    if (f.sexe) ligneNaissance += ` (${f.sexe})`;
-    sections.push({ text: ligneNaissance, bold: false });
+    if (toggles.naissance !== false && (f.nomNaissance || f.ddn || f.sexe)) {
+      let nePrefix = f.sexe === "F" ? "Née" : (f.sexe === "H" ? "Né" : "Né(e)");
+      let ligneNaissance = f.nomNaissance ? `${nePrefix} ${f.nomNaissance}` : nePrefix;
+      if (f.ddn) ligneNaissance += ` le ${f.ddn}`;
+      if (f.sexe) ligneNaissance += ` (${f.sexe})`;
+      sections.push({ text: ligneNaissance, weight: "regular" });
+    }
 
-    const ligneCp = [f.codepostal, f.commune].filter(Boolean).join(" ");
-    const ligneAdresse = [f.adresse, ligneCp].filter(Boolean).join(" ");
-    if (ligneAdresse) sections.push({ text: ligneAdresse, bold: false });
+    if (toggles.adresse !== false) {
+      const ligneCp = [f.codepostal, f.commune].filter(Boolean).join(" ");
+      const ligneAdresse = [f.adresse, ligneCp].filter(Boolean).join(" ");
+      if (ligneAdresse) sections.push({ text: ligneAdresse, weight: "regular" });
+    }
 
-    if (sections.length === 0) sections.push({ text: "(étiquette vide)", bold: false });
+    if (toggles.email && f.email) sections.push({ text: f.email, weight: "regular" });
+    if (toggles.nir && f.nir) sections.push({ text: `NIR ${f.nir}`, weight: "regular" });
+
+    if (sections.length === 0) sections.push({ text: "(étiquette vide)", weight: "regular" });
     return sections;
   }
 
   function buildPreleveurSections(nom, am, rpps, dateTexte, heureTexte) {
+    // La date/heure est l'info la plus utile (mise en avant comme le nom du préleveur) ;
+    // le numéro AM n'est qu'un repère secondaire, affiché petit en bas. Le RPPS n'est plus
+    // imprimé (il prenait trop de place) — il reste cependant mémorisé pour ce préleveur.
     const sections = [];
-    if (nom) sections.push({ text: `Prélevé par ${nom}`, bold: true });
-    const idParts = [];
-    if (am) idParts.push(`AM ${am}`);
-    if (rpps) idParts.push(`RPPS ${rpps}`);
-    if (idParts.length) sections.push({ text: idParts.join(" - "), bold: false });
+    if (nom) sections.push({ text: `Prélevé par ${nom}`, weight: "bold" });
     const dtParts = [];
     if (dateTexte) dtParts.push(`le ${dateTexte}`);
     if (heureTexte) dtParts.push(`à ${heureTexte}`);
-    if (dtParts.length) sections.push({ text: dtParts.join(" "), bold: false });
-    if (!sections.length) sections.push({ text: "(étiquette vide)", bold: false });
+    if (dtParts.length) sections.push({ text: dtParts.join(" "), weight: "bold" });
+    if (am) sections.push({ text: `AM ${am}`, weight: "small" });
+    if (!sections.length) sections.push({ text: "(étiquette vide)", weight: "regular" });
     return sections;
   }
 
   function buildPrepSections(nom, prenom, dateOrdo, prescripteur, dateRdv, tubesTexte, commentaire) {
     const sections = [];
     const ligne1 = [nom, prenom].filter(Boolean).join(" ");
-    if (ligne1) sections.push({ text: ligne1, bold: true });
-    if (dateOrdo) sections.push({ text: `Ordo du ${dateOrdo}`, bold: false });
-    if (prescripteur) sections.push({ text: prescripteur, bold: false });
-    if (dateRdv) sections.push({ text: `RDV le ${dateRdv}`, bold: false });
-    if (tubesTexte) sections.push({ text: `Tubes : ${tubesTexte}`, bold: false });
-    if (commentaire) sections.push({ text: commentaire, bold: false });
-    if (!sections.length) sections.push({ text: "(étiquette vide)", bold: false });
+    if (ligne1) sections.push({ text: ligne1, weight: "bold" });
+    if (dateOrdo) sections.push({ text: `Ordo du ${dateOrdo}`, weight: "regular" });
+    if (prescripteur) sections.push({ text: prescripteur, weight: "regular" });
+    // Aussi mis en avant que le nom : c'est l'info la plus importante de cette étiquette.
+    if (dateRdv) sections.push({ text: `RDV le ${dateRdv}`, weight: "bold" });
+    if (tubesTexte) sections.push({ text: tubesTexte, weight: "regular" });
+    if (commentaire) sections.push({ text: commentaire, weight: "regular" });
+    if (!sections.length) sections.push({ text: "(étiquette vide)", weight: "regular" });
     return sections;
   }
 
@@ -590,6 +644,98 @@
     return { ascent, descent, width: m.width };
   }
 
+  const SECTION_SEP = " \u2022 "; // sépare deux informations différentes sur la même ligne
+
+  // Aplatit une suite de sections "regular" en un flux de mots, en marquant le premier mot
+  // de chaque nouvelle section (sauf la toute première) comme une frontière : ce mot-là sera
+  // précédé de SECTION_SEP plutôt que d'un simple espace, pour distinguer visuellement deux
+  // informations différentes qui finissent sur la même ligne.
+  function tokenizeRegularStream(sections) {
+    const tokens = [];
+    sections.forEach((sec, secIdx) => {
+      sec.text.split(/\s+/).filter(Boolean).forEach((word, wIdx) => {
+        tokens.push({ word, boundary: wIdx === 0 && secIdx > 0 });
+      });
+    });
+    return tokens;
+  }
+
+  // Comme wrapText, mais à partir d'un flux de mots déjà préparé (voir tokenizeRegularStream) :
+  // permet à plusieurs informations différentes de partager la même ligne quand la largeur le
+  // permet, plutôt que de forcer un retour à la ligne à chaque nouveau champ.
+  function wrapTokens(ctx, tokens, font, maxWidth) {
+    ctx.font = font;
+    const lines = [];
+    let current = "";
+    for (const { word, boundary } of tokens) {
+      const toks = breakLongWord(ctx, word, maxWidth, font);
+      for (let idx = 0; idx < toks.length; idx++) {
+        const tok = toks[idx];
+        const isBoundary = idx === 0 && boundary;
+        const candidate = current ? current + (isBoundary ? SECTION_SEP : " ") + tok : tok;
+        ctx.font = font;
+        if (ctx.measureText(candidate).width <= maxWidth || !current) {
+          current = candidate;
+        } else {
+          lines.push(current);
+          current = tok;
+        }
+      }
+    }
+    if (current) lines.push(current);
+
+    const finalLines = [];
+    for (let line of lines) {
+      ctx.font = font;
+      while (ctx.measureText(line).width > maxWidth && line.length > 1) {
+        let best = 1;
+        for (let k = 1; k <= line.length; k++) {
+          if (ctx.measureText(line.slice(0, k)).width <= maxWidth) best = k;
+          else break;
+        }
+        finalLines.push(line.slice(0, best));
+        line = line.slice(best);
+      }
+      finalLines.push(line);
+    }
+    return finalLines;
+  }
+
+  // Met en page les sections pour exploiter toute la largeur disponible : les sections
+  // "bold" (titre) et "small" (info secondaire) gardent chacune leur propre ligne, mais les
+  // sections "regular" (naissance, adresse, email, NIR, etc.) s'enchaînent sur la même ligne
+  // tant qu'il reste de la place, au lieu de systématiquement repartir à la ligne à chaque champ.
+  function packSectionsIntoLines(ctx, rawSections, fonts, maxWidth) {
+    const groups = [];
+    let buffer = [];
+    for (const sec of rawSections) {
+      if (!sec.text.trim()) continue;
+      if (sec.weight === "regular") {
+        buffer.push(sec);
+      } else {
+        if (buffer.length) { groups.push({ kind: "regular", payload: buffer }); buffer = []; }
+        groups.push({ kind: sec.weight, payload: sec.text });
+      }
+    }
+    if (buffer.length) groups.push({ kind: "regular", payload: buffer });
+
+    const lines = [];
+    for (const g of groups) {
+      if (g.kind === "regular") {
+        const tokens = tokenizeRegularStream(g.payload);
+        for (const line of wrapTokens(ctx, tokens, fonts.regular, maxWidth)) {
+          lines.push({ text: line, font: fonts.regular, weight: "regular" });
+        }
+      } else {
+        const font = fonts[g.kind];
+        for (const line of wrapText(ctx, g.payload, font, maxWidth)) {
+          lines.push({ text: line, font, weight: g.kind });
+        }
+      }
+    }
+    return lines;
+  }
+
   // Construit le canevas "à plat" (400 x 96, dans le sens de lecture normal), avec la
   // plus grande police qui tient sur les 96px de hauteur disponible, en empilant les
   // lignes selon leur encre réelle (pas une hauteur de police approximative).
@@ -602,16 +748,14 @@
 
     function layoutAtSize(size) {
       const regSize = Math.max(size - 3, 8);
-      const boldFont = `bold ${size}px ${FONT_FAMILY}`;
-      const regFont = `${regSize}px ${FONT_FAMILY}`;
-      let lines = [];
-      for (const sec of rawSections) {
-        const font = sec.bold ? boldFont : regFont;
-        for (const line of wrapText(mctx, sec.text, font, maxTextWidth)) {
-          const ink = measureLineInk(mctx, line, font);
-          lines.push({ text: line, font, bold: sec.bold, ...ink });
-        }
-      }
+      const smallSize = Math.max(Math.floor(size / 2), 8);
+      const fonts = {
+        bold: `bold ${size}px ${FONT_FAMILY}`,
+        regular: `${regSize}px ${FONT_FAMILY}`,
+        small: `${smallSize}px ${FONT_FAMILY}`,
+      };
+      const packed = packSectionsIntoLines(mctx, rawSections, fonts, maxTextWidth);
+      const lines = packed.map((l) => ({ ...l, ...measureLineInk(mctx, l.text, l.font) }));
       const totalH = lines.reduce((sum, l) => sum + l.ascent + l.descent, 0)
         + LINE_GAP * Math.max(lines.length - 1, 0);
       return { lines, totalH };
@@ -642,7 +786,7 @@
       const baselineY = cursor + line.ascent;
       const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
       ctx.fillText(line.text, x, baselineY);
-      if (line.bold) ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
+      if (line.weight === "bold") ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
       cursor += line.ascent + line.descent + LINE_GAP;
     }
     return landscape;
@@ -822,6 +966,13 @@
     adresse: $("adresse"),
     codepostal: $("codepostal"),
     commune: $("commune"),
+    telephone: $("telephone"),
+    email: $("email"),
+    nir: $("nir"),
+    showNaissance: $("showNaissance"),
+    showAdresse: $("showAdresse"),
+    showEmail: $("showEmail"),
+    showNir: $("showNir"),
     copies: $("copies"),
     previewCanvas: $("previewCanvas"),
     statusPatient: $("statusPatient"),
@@ -891,12 +1042,24 @@
       adresse: els.adresse.value.trim(),
       codepostal: els.codepostal.value.trim(),
       commune: els.commune.value.trim().toUpperCase(),
+      email: els.email.value.trim(),
+      nir: els.nir.value.trim(),
+      telephone: els.telephone.value.trim(),
+    };
+  }
+
+  function labelToggles() {
+    return {
+      naissance: els.showNaissance.checked,
+      adresse: els.showAdresse.checked,
+      email: els.showEmail.checked,
+      nir: els.showNir.checked,
     };
   }
 
   function updatePreview() {
     const fields = currentFields();
-    const landscape = composeSectionsCanvas(buildPatientSections(fields));
+    const landscape = composeSectionsCanvas(buildPatientSections(fields, labelToggles()));
     const target = els.previewCanvas;
     target.width = landscape.width;
     target.height = landscape.height;
@@ -907,9 +1070,12 @@
   }
 
   ["input", "change"].forEach((evt) => {
-    [els.nom, els.prenom, els.nomNaissance, els.ddn, els.adresse, els.codepostal, els.commune, els.civilite, els.sexe]
+    [els.nom, els.prenom, els.nomNaissance, els.ddn, els.adresse, els.codepostal, els.commune,
+     els.civilite, els.sexe, els.telephone, els.email, els.nir]
       .forEach((el) => el.addEventListener(evt, updatePreview));
   });
+  [els.showNaissance, els.showAdresse, els.showEmail, els.showNir]
+    .forEach((el) => el.addEventListener("change", updatePreview));
 
   els.btnEffacer.addEventListener("click", () => {
     els.nom.value = "";
@@ -919,6 +1085,9 @@
     els.adresse.value = "";
     els.codepostal.value = "";
     els.commune.value = "";
+    els.telephone.value = "";
+    els.email.value = "";
+    els.nir.value = "";
     els.civilite.value = "";
     els.sexe.value = "";
     els.copies.value = 1;
@@ -942,6 +1111,9 @@
     els.adresse.value = match.adresse || "";
     els.codepostal.value = match.codepostal || "";
     els.commune.value = match.commune || "";
+    els.telephone.value = match.telephone || "";
+    els.email.value = match.email || "";
+    els.nir.value = match.nir || "";
     updatePreview();
     setStatus(els.statusPatient, `Patient « ${label} » chargé.`);
   });
