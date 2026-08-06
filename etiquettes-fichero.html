@@ -25,6 +25,10 @@
     --accent-prep: #059669;
     --tint-prep: #e9f9f1;
     --accent-prep-dark: #047857;
+
+    --accent-nomseul: #7c3aed;
+    --tint-nomseul: #f3ecfe;
+    --accent-nomseul-dark: #6d28d9;
   }
   * { box-sizing: border-box; }
   body {
@@ -65,6 +69,8 @@
   .card-preleveur .card-body { background: var(--tint-preleveur); }
   .card-prep .card-header { background: var(--accent-prep); }
   .card-prep .card-body { background: var(--tint-prep); }
+  .card-nomseul .card-header { background: var(--accent-nomseul); }
+  .card-nomseul .card-body { background: var(--tint-nomseul); }
   .card-neutral .card-body { background: #fbfbfc; }
 
   label {
@@ -151,6 +157,8 @@
   button.btn-preleveur:active { background: var(--accent-preleveur-dark); }
   button.btn-prep { background: var(--accent-prep); }
   button.btn-prep:active { background: var(--accent-prep-dark); }
+  button.btn-nomseul { background: var(--accent-nomseul); }
+  button.btn-nomseul:active { background: var(--accent-nomseul-dark); }
   button.secondary {
     background: #e5e7eb;
     color: #333;
@@ -420,6 +428,43 @@
   </div>
 </div>
 
+<!-- ============================= Étiquette nom seul ============================= -->
+<div class="card card-nomseul">
+  <div class="card-header">Étiquette nom seul</div>
+  <div class="card-body">
+    <label for="nomseulPicker">Patient enregistré</label>
+    <div class="picker-row">
+      <select id="nomseulPicker">
+        <option value="">—</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <label for="nomseulNom">Nom *</label>
+    <input type="text" id="nomseulNom" autocapitalize="characters">
+
+    <label for="nomseulPrenom">Prénom *</label>
+    <input type="text" id="nomseulPrenom" autocapitalize="words">
+
+    <div class="toggles-row">
+      <span class="toggle-item"><input type="checkbox" id="nomseulVersionCourte">Version courte (anonymisée)</span>
+    </div>
+    <div class="hint">ex : DUP. Jea. pour DUPONT Jean</div>
+
+    <label style="margin-top:14px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="nomseulPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerNomseul" class="btn-nomseul" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerNomseul" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusNomseul" class="status"></div>
+  </div>
+</div>
+
 <details>
   <summary>À propos</summary>
   <p style="font-size:13px;color:#666">
@@ -576,6 +621,23 @@
     if (commentaire) sections.push({ text: commentaire, weight: "regular" });
     if (!sections.length) sections.push({ text: "(étiquette vide)", weight: "regular" });
     return sections;
+  }
+
+  // Étiquette minimaliste : uniquement NOM Prénom, en gras, à la plus grande taille
+  // possible sur toute la largeur de l'étiquette (une seule section "bold"). La version
+  // courte anonymise l'identité en n'affichant que les 3 premières lettres du nom et du
+  // prénom, chacune suivie d'un point (ex. « DUP. Jea. » pour DUPONT Jean).
+  function buildNomseulSections(nom, prenom, versionCourte) {
+    let texte;
+    if (versionCourte) {
+      const abbrNom = nom ? `${nom.slice(0, 3)}.` : "";
+      const abbrPrenom = prenom ? `${prenom.slice(0, 3)}.` : "";
+      texte = [abbrNom, abbrPrenom].filter(Boolean).join(" ");
+    } else {
+      texte = [nom, prenom].filter(Boolean).join(" ");
+    }
+    if (!texte) return [{ text: "(étiquette vide)", weight: "regular" }];
+    return [{ text: texte, weight: "bold" }];
   }
 
   function breakLongWord(ctx, word, maxWidth, font) {
@@ -1003,10 +1065,63 @@
     statusPrep: $("statusPrep"),
     btnImprimerPrep: $("btnImprimerPrep"),
     btnEffacerPrep: $("btnEffacerPrep"),
+    // nom seul
+    nomseulPicker: $("nomseulPicker"),
+    nomseulNom: $("nomseulNom"),
+    nomseulPrenom: $("nomseulPrenom"),
+    nomseulVersionCourte: $("nomseulVersionCourte"),
+    nomseulPreviewCanvas: $("nomseulPreviewCanvas"),
+    statusNomseul: $("statusNomseul"),
+    btnImprimerNomseul: $("btnImprimerNomseul"),
+    btnEffacerNomseul: $("btnEffacerNomseul"),
     // global
     btnConnecter: $("btnConnecter"),
     printerInfo: $("printerInfo"),
   };
+
+  // Le clavier numérique iOS (inputmode="numeric") ne propose pas de "/" ni de ":" :
+  // on les insère automatiquement au fur et à mesure de la saisie des chiffres.
+  function digitsOnly(s) {
+    return (s || "").replace(/\D/g, "");
+  }
+
+  function formatDDMMYYYY(digits) {
+    digits = digits.slice(0, 8);
+    let out = digits.slice(0, 2);
+    if (digits.length > 2) out += "/" + digits.slice(2, 4);
+    if (digits.length > 4) out += "/" + digits.slice(4, 8);
+    return out;
+  }
+
+  function formatHHMM(digits) {
+    digits = digits.slice(0, 4);
+    let out = digits.slice(0, 2);
+    if (digits.length > 2) out += ":" + digits.slice(2, 4);
+    return out;
+  }
+
+  function formatDateHeure(digits) {
+    digits = digits.slice(0, 12);
+    let out = digits.slice(0, 2);
+    if (digits.length > 2) out += "/" + digits.slice(2, 4);
+    if (digits.length > 4) out += "/" + digits.slice(4, 8);
+    if (digits.length > 8) out += " " + digits.slice(8, 10);
+    if (digits.length > 10) out += ":" + digits.slice(10, 12);
+    return out;
+  }
+
+  function attachAutoFormat(el, formatter) {
+    el.addEventListener("input", () => {
+      const formatted = formatter(digitsOnly(el.value));
+      if (el.value !== formatted) el.value = formatted;
+    });
+  }
+
+  attachAutoFormat(els.ddn, formatDDMMYYYY);
+  attachAutoFormat(els.preleveurDate, formatDDMMYYYY);
+  attachAutoFormat(els.preleveurHeure, formatHHMM);
+  attachAutoFormat(els.prepDateOrdo, formatDDMMYYYY);
+  attachAutoFormat(els.prepDateRdv, formatDateHeure);
 
   function setStatus(el, text, kind) {
     el.textContent = text;
@@ -1028,6 +1143,17 @@
       els.patientPicker.appendChild(opt);
     }
     if (selectLabel) els.patientPicker.value = selectLabel;
+  }
+
+  function refreshNomseulPicker(selectLabel) {
+    els.nomseulPicker.innerHTML = '<option value="">—</option>';
+    for (const p of patients) {
+      const opt = document.createElement("option");
+      opt.value = patientLabel(p);
+      opt.textContent = patientLabel(p);
+      els.nomseulPicker.appendChild(opt);
+    }
+    if (selectLabel) els.nomseulPicker.value = selectLabel;
   }
 
   function currentFields() {
@@ -1139,6 +1265,7 @@
     savePatients(patients);
     selectedPatientRecord = record;
     refreshPatientPicker(patientLabel(record));
+    refreshNomseulPicker();
     setStatus(els.statusPatient, `Patient « ${patientLabel(record)} » enregistré.`, "ok");
   });
 
@@ -1156,6 +1283,7 @@
     selectedPatientRecord = null;
     els.btnEffacer.click();
     refreshPatientPicker();
+    refreshNomseulPicker();
     setStatus(els.statusPatient, `Patient « ${label} » supprimé.`, "err");
   });
 
@@ -1400,6 +1528,75 @@
     }
   });
 
+  // ===================== Étiquette nom seul =====================
+
+  function currentNomseulFields() {
+    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    return {
+      nom: els.nomseulNom.value.trim().toUpperCase(),
+      prenom: capitalize(els.nomseulPrenom.value.trim()),
+      versionCourte: els.nomseulVersionCourte.checked,
+    };
+  }
+
+  function updateNomseulPreview() {
+    const f = currentNomseulFields();
+    const landscape = composeSectionsCanvas(buildNomseulSections(f.nom, f.prenom, f.versionCourte));
+    const target = els.nomseulPreviewCanvas;
+    target.width = landscape.width;
+    target.height = landscape.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(landscape, 0, 0);
+    return landscape;
+  }
+
+  ["input", "change"].forEach((evt) => {
+    [els.nomseulNom, els.nomseulPrenom].forEach((el) => el.addEventListener(evt, updateNomseulPreview));
+  });
+  els.nomseulVersionCourte.addEventListener("change", updateNomseulPreview);
+
+  els.nomseulPicker.addEventListener("change", () => {
+    const label = els.nomseulPicker.value;
+    const match = patients.find((p) => patientLabel(p) === label);
+    if (!match) return;
+    els.nomseulNom.value = match.nom || "";
+    els.nomseulPrenom.value = match.prenom || "";
+    updateNomseulPreview();
+  });
+
+  els.btnEffacerNomseul.addEventListener("click", () => {
+    els.nomseulNom.value = "";
+    els.nomseulPrenom.value = "";
+    els.nomseulVersionCourte.checked = false;
+    els.nomseulPicker.value = "";
+    updateNomseulPreview();
+    setStatus(els.statusNomseul, "Prêt.");
+  });
+
+  els.btnImprimerNomseul.addEventListener("click", async () => {
+    const f = currentNomseulFields();
+    if (!f.nom || !f.prenom) {
+      setStatus(els.statusNomseul, "Merci de renseigner au moins le nom et le prénom.", "err");
+      return;
+    }
+
+    const landscape = updateNomseulPreview();
+
+    els.btnImprimerNomseul.disabled = true;
+    setStatus(els.statusNomseul, "Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      setStatus(els.statusNomseul, "Impression en cours…");
+      await printLandscapeCanvas(landscape, 1, DENSITY);
+      setStatus(els.statusNomseul, "Étiquette imprimée.", "ok");
+    } catch (e) {
+      setStatus(els.statusNomseul, `Erreur :\n${e.message || e}`, "err");
+    } finally {
+      els.btnImprimerNomseul.disabled = false;
+    }
+  });
+
   // ===================== Connexion imprimante (globale) =====================
 
   els.btnConnecter.addEventListener("click", async () => {
@@ -1426,6 +1623,8 @@
   els.preleveurHeure.value = `${pad0(now0.getHours())}:${pad0(now0.getMinutes())}`;
   updatePreleveurPreview();
   updatePrepPreview();
+  refreshNomseulPicker();
+  updateNomseulPreview();
 })();
 </script>
 
