@@ -452,6 +452,9 @@
     </div>
     <div class="hint">ex : DUP. Jea. pour DUPONT Jean</div>
 
+    <label for="nomseulCopies">Nombre d'étiquettes</label>
+    <input type="number" id="nomseulCopies" value="1" min="1" max="30">
+
     <label style="margin-top:14px">Aperçu</label>
     <div class="preview-wrap">
       <canvas id="nomseulPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
@@ -1070,6 +1073,7 @@
     nomseulNom: $("nomseulNom"),
     nomseulPrenom: $("nomseulPrenom"),
     nomseulVersionCourte: $("nomseulVersionCourte"),
+    nomseulCopies: $("nomseulCopies"),
     nomseulPreviewCanvas: $("nomseulPreviewCanvas"),
     statusNomseul: $("statusNomseul"),
     btnImprimerNomseul: $("btnImprimerNomseul"),
@@ -1569,6 +1573,7 @@
     els.nomseulNom.value = "";
     els.nomseulPrenom.value = "";
     els.nomseulVersionCourte.checked = false;
+    els.nomseulCopies.value = 1;
     els.nomseulPicker.value = "";
     updateNomseulPreview();
     setStatus(els.statusNomseul, "Prêt.");
@@ -1580,6 +1585,9 @@
       setStatus(els.statusNomseul, "Merci de renseigner au moins le nom et le prénom.", "err");
       return;
     }
+    let copies = parseInt(els.nomseulCopies.value, 10);
+    if (!Number.isFinite(copies)) copies = 1;
+    copies = Math.max(1, Math.min(30, copies));
 
     const landscape = updateNomseulPreview();
 
@@ -1588,8 +1596,8 @@
     try {
       await ensureConnected();
       setStatus(els.statusNomseul, "Impression en cours…");
-      await printLandscapeCanvas(landscape, 1, DENSITY);
-      setStatus(els.statusNomseul, "Étiquette imprimée.", "ok");
+      await printLandscapeCanvas(landscape, copies, DENSITY);
+      setStatus(els.statusNomseul, `${copies} étiquette(s) imprimée(s).`, "ok");
     } catch (e) {
       setStatus(els.statusNomseul, `Erreur :\n${e.message || e}`, "err");
     } finally {
