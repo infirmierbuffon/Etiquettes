@@ -29,6 +29,10 @@
     --accent-nomseul: #7c3aed;
     --tint-nomseul: #f3ecfe;
     --accent-nomseul-dark: #6d28d9;
+
+    --accent-libre: #db2777;
+    --tint-libre: #fdecf3;
+    --accent-libre-dark: #be185d;
   }
   * { box-sizing: border-box; }
   body {
@@ -47,12 +51,49 @@
     color: var(--text-muted);
     margin-bottom: 16px;
   }
+  [hidden] { display: none !important; }
   .card {
     background: #fff;
     border-radius: 12px;
     margin-bottom: 16px;
     overflow: hidden;
     border: 1px solid var(--border);
+  }
+  .tile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 88px;
+    border-radius: 14px;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px 10px;
+    cursor: pointer;
+  }
+  .tile:active { opacity: 0.85; }
+  .tile-patient { background: var(--accent-patient); }
+  .tile-preleveur { background: var(--accent-preleveur); }
+  .tile-prep { background: var(--accent-prep); }
+  .tile-nomseul { background: var(--accent-nomseul); }
+  .tile-libre { background: var(--accent-libre); grid-column: span 2; }
+  .btn-retour {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 0 14px;
+    cursor: pointer;
+    text-align: left;
   }
   .card-header {
     color: #fff;
@@ -71,6 +112,8 @@
   .card-prep .card-body { background: var(--tint-prep); }
   .card-nomseul .card-header { background: var(--accent-nomseul); }
   .card-nomseul .card-body { background: var(--tint-nomseul); }
+  .card-libre .card-header { background: var(--accent-libre); }
+  .card-libre .card-body { background: var(--tint-libre); }
   .card-neutral .card-body { background: #fbfbfc; }
 
   label {
@@ -159,6 +202,8 @@
   button.btn-prep:active { background: var(--accent-prep-dark); }
   button.btn-nomseul { background: var(--accent-nomseul); }
   button.btn-nomseul:active { background: var(--accent-nomseul-dark); }
+  button.btn-libre { background: var(--accent-libre); }
+  button.btn-libre:active { background: var(--accent-libre-dark); }
   button.secondary {
     background: #e5e7eb;
     color: #333;
@@ -249,7 +294,19 @@
   </div>
 </div>
 
+<div id="moduleHome">
+  <div class="tile-grid">
+    <button class="tile tile-patient" type="button" data-module="patient">Etiquettes<br>prélèvements</button>
+    <button class="tile tile-preleveur" type="button" data-module="preleveur">Horodatage<br>et préleveur</button>
+    <button class="tile tile-prep" type="button" data-module="prep">Préparation</button>
+    <button class="tile tile-nomseul" type="button" data-module="nomseul">Nom seul<br>(pour piluliers)</button>
+    <button class="tile tile-libre" type="button" data-module="libre">Texte libre</button>
+  </div>
+</div>
+
 <!-- ============================= Étiquette patient ============================= -->
+<div class="module-view" id="module-patient" hidden>
+  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
 <div class="card card-patient">
   <div class="card-header">Étiquette patient</div>
   <div class="card-body">
@@ -344,8 +401,11 @@
     <div id="statusPatient" class="status"></div>
   </div>
 </div>
+</div>
 
 <!-- ============================= Préleveur et horodatage ============================= -->
+<div class="module-view" id="module-preleveur" hidden>
+  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
 <div class="card card-preleveur">
   <div class="card-header">Préleveur et horodatage</div>
   <div class="card-body">
@@ -384,8 +444,11 @@
     <div id="statusPreleveur" class="status"></div>
   </div>
 </div>
+</div>
 
 <!-- ============================= Étiquette de préparation ============================= -->
+<div class="module-view" id="module-prep" hidden>
+  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
 <div class="card card-prep">
   <div class="card-header">Étiquette de préparation (prélèvement à venir)</div>
   <div class="card-body">
@@ -432,8 +495,11 @@
     <div id="statusPrep" class="status"></div>
   </div>
 </div>
+</div>
 
 <!-- ============================= Étiquette nom seul ============================= -->
+<div class="module-view" id="module-nomseul" hidden>
+  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
 <div class="card card-nomseul">
   <div class="card-header">Étiquette nom seul</div>
   <div class="card-body">
@@ -471,6 +537,34 @@
     </div>
     <div id="statusNomseul" class="status"></div>
   </div>
+</div>
+</div>
+
+<!-- ============================= Étiquette texte libre ============================= -->
+<div class="module-view" id="module-libre" hidden>
+  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+<div class="card card-libre">
+  <div class="card-header">Étiquette texte libre</div>
+  <div class="card-body">
+    <label for="libreTexte">Texte</label>
+    <textarea id="libreTexte" rows="4" style="width:100%;padding:10px;font-size:16px;border:1px solid var(--border);border-radius:8px;font-family:inherit;resize:vertical;"></textarea>
+    <div class="hint">une ligne par information</div>
+
+    <label for="libreCopies">Nombre d'étiquettes</label>
+    <input type="number" id="libreCopies" value="1" min="1" max="30">
+
+    <label style="margin-top:14px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="librePreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerLibre" class="btn-libre" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerLibre" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusLibre" class="status"></div>
+  </div>
+</div>
 </div>
 
 <details>
@@ -681,6 +775,15 @@ function patientLabel(p) {
     return [{ text: texte, weight: "bold" }];
   }
 
+  // Étiquette « texte libre » : chaque ligne tapée devient sa propre section
+  // "regular", mise en page comme les autres étiquettes (plus grande taille qui
+  // tient, retour à la ligne automatique). Les lignes vides sont ignorées.
+  function buildLibreSections(texte) {
+    const lignes = (texte || "").split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lignes.length) return [{ text: "(étiquette vide)", weight: "regular" }];
+    return lignes.map((ligne) => ({ text: ligne, weight: "regular" }));
+  }
+
   function breakLongWord(ctx, word, maxWidth, font) {
     ctx.font = font;
     if (ctx.measureText(word).width <= maxWidth) return [word];
@@ -747,7 +850,7 @@ function patientLabel(p) {
     return { ascent, descent, width: m.width };
   }
 
-  const SECTION_SEP = " \u2022 "; // sépare deux informations différentes sur la même ligne
+  const SECTION_SEP = " • "; // sépare deux informations différentes sur la même ligne
 
   // Aplatit une suite de sections "regular" en un flux de mots, en marquant le premier mot
   // de chaque nouvelle section (sauf la toute première) comme une frontière : ce mot-là sera
@@ -1118,10 +1221,51 @@ function patientLabel(p) {
     statusNomseul: $("statusNomseul"),
     btnImprimerNomseul: $("btnImprimerNomseul"),
     btnEffacerNomseul: $("btnEffacerNomseul"),
+    // texte libre
+    libreTexte: $("libreTexte"),
+    libreCopies: $("libreCopies"),
+    librePreviewCanvas: $("librePreviewCanvas"),
+    statusLibre: $("statusLibre"),
+    btnImprimerLibre: $("btnImprimerLibre"),
+    btnEffacerLibre: $("btnEffacerLibre"),
     // global
     btnConnecter: $("btnConnecter"),
     printerInfo: $("printerInfo"),
+    moduleHome: $("moduleHome"),
   };
+
+  // ===================== Navigation par module (écran d'accueil à tuiles) =====================
+  // Plutôt qu'une longue page à faire défiler jusqu'à la bonne carte, l'accueil propose des
+  // tuiles colorées (une par module) ; cliquer sur une tuile affiche uniquement ce module,
+  // plein écran, avec un bouton "Retour" pour revenir choisir un autre module.
+  const moduleViews = {
+    patient: $("module-patient"),
+    preleveur: $("module-preleveur"),
+    prep: $("module-prep"),
+    nomseul: $("module-nomseul"),
+    libre: $("module-libre"),
+  };
+
+  function showModule(name) {
+    els.moduleHome.hidden = true;
+    for (const key of Object.keys(moduleViews)) {
+      moduleViews[key].hidden = key !== name;
+    }
+    window.scrollTo(0, 0);
+  }
+
+  function showHome() {
+    for (const view of Object.values(moduleViews)) view.hidden = true;
+    els.moduleHome.hidden = false;
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll(".tile[data-module]").forEach((tile) => {
+    tile.addEventListener("click", () => showModule(tile.dataset.module));
+  });
+  document.querySelectorAll("[data-back]").forEach((btn) => {
+    btn.addEventListener("click", showHome);
+  });
 
   // Le clavier numérique iOS (inputmode="numeric") ne propose pas de "/" ni de ":" :
   // on les insère automatiquement au fur et à mesure de la saisie des chiffres.
@@ -1654,6 +1798,53 @@ function patientLabel(p) {
     }
   });
 
+  // ===================== Étiquette texte libre =====================
+
+  function updateLibrePreview() {
+    const landscape = composeSectionsCanvas(buildLibreSections(els.libreTexte.value));
+    const target = els.librePreviewCanvas;
+    target.width = landscape.width;
+    target.height = landscape.height;
+    const ctx = target.getContext("2d");
+    ctx.clearRect(0, 0, target.width, target.height);
+    ctx.drawImage(landscape, 0, 0);
+    return landscape;
+  }
+
+  els.libreTexte.addEventListener("input", updateLibrePreview);
+
+  els.btnEffacerLibre.addEventListener("click", () => {
+    els.libreTexte.value = "";
+    els.libreCopies.value = 1;
+    updateLibrePreview();
+    setStatus(els.statusLibre, "Prêt.");
+  });
+
+  els.btnImprimerLibre.addEventListener("click", async () => {
+    if (!els.libreTexte.value.trim()) {
+      setStatus(els.statusLibre, "Merci de renseigner le texte à imprimer.", "err");
+      return;
+    }
+    let copies = parseInt(els.libreCopies.value, 10);
+    if (!Number.isFinite(copies)) copies = 1;
+    copies = Math.max(1, Math.min(30, copies));
+
+    const landscape = updateLibrePreview();
+
+    els.btnImprimerLibre.disabled = true;
+    setStatus(els.statusLibre, "Connexion à l'imprimante FICHERO…");
+    try {
+      await ensureConnected();
+      setStatus(els.statusLibre, "Impression en cours…");
+      await printLandscapeCanvas(landscape, copies, DENSITY);
+      setStatus(els.statusLibre, `${copies} étiquette(s) imprimée(s).`, "ok");
+    } catch (e) {
+      setStatus(els.statusLibre, `Erreur :\n${e.message || e}`, "err");
+    } finally {
+      els.btnImprimerLibre.disabled = false;
+    }
+  });
+
   // ===================== Connexion imprimante (globale) =====================
 
   els.btnConnecter.addEventListener("click", async () => {
@@ -1682,6 +1873,7 @@ function patientLabel(p) {
   updatePrepPreview();
   refreshNomseulPicker();
   updateNomseulPreview();
+  updateLibrePreview();
 })();
 </script>
 
