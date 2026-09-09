@@ -548,7 +548,7 @@
         "Ceci écrase la liste de patients stockée sur ce téléphone."
       );
       if (!ok) return;
-      patients = data;
+      patients = data.map((p) => ({ ...p, nomNaissance: p.nomNaissance || p.nom_naissance || "" }));
       savePatients(patients);
       refreshPatientPicker();
       refreshNomseulPicker();
@@ -1275,7 +1275,7 @@ function patientLabel(p) {
     els.civilite.value = match.civilite || "";
     els.nom.value = match.nom || "";
     els.prenom.value = match.prenom || "";
-    els.nomNaissance.value = match.nomNaissance || "";
+    els.nomNaissance.value = match.nomNaissance || match.nom_naissance || "";
     els.ddn.value = match.ddn || "";
     els.sexe.value = match.sexe || "";
     els.adresse.value = match.adresse || "";
