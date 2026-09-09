@@ -260,6 +260,11 @@
       </select>
       <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer</button>
     </div>
+    <div class="picker-row">
+      <button id="btnImporterPatients" class="secondary" type="button">Importer depuis un fichier…</button>
+      <input type="file" id="importPatientsFile" accept="application/json,.json" style="display:none">
+    </div>
+    <div class="hint">Choisir le patients.json du Mac (Fichiers → iCloud Drive → Antoine → 09 - Cabinet infirmier libéral → Labo &amp; prélèvements → Etiquettes PATIENTS → EtiquettesPrelevements) pour mettre à jour la liste sur ce téléphone.</div>
 
     <div class="divider"></div>
 
@@ -520,7 +525,40 @@
     localStorage.setItem(PATIENTS_KEY, JSON.stringify(list));
   }
 
-  function patientLabel(p) {
+  // Importe la liste des patients depuis un fichier JSON choisi par l'utilisateur
+  // (typiquement le patients.json du Mac, ouvert via Fichiers → iCloud Drive dans
+  // Bluefy). Remplace entièrement la liste stockée sur ce téléphone : c'est le Mac
+  // qui reste la source de vérité, ce fichier n'est là que pour la recopier ici.
+  function importPatientsFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try {
+        data = JSON.parse(reader.result);
+      } catch (e) {
+        alert("Fichier illisible : ce n'est pas un JSON valide.");
+        return;
+      }
+      if (!Array.isArray(data)) {
+        alert("Format inattendu : ce fichier ne contient pas une liste de patients.");
+        return;
+      }
+      const ok = confirm(
+        `Remplacer la liste actuelle par les ${data.length} patients de ce fichier ?\n\n` +
+        "Ceci écrase la liste de patients stockée sur ce téléphone."
+      );
+      if (!ok) return;
+      patients = data;
+      savePatients(patients);
+      refreshPatientPicker();
+      refreshNomseulPicker();
+      alert(`${data.length} patients importés.`);
+    };
+    reader.onerror = () => alert("Échec de la lecture du fichier.");
+    reader.readAsText(file);
+  }
+
+function patientLabel(p) {
     let label = `${p.nom || ""} ${p.prenom || ""}`.trim();
     if (p.ddn) label += ` (${p.ddn})`;
     return label;
@@ -1022,6 +1060,8 @@
     // patient
     patientPicker: $("patientPicker"),
     btnSupprimerPatient: $("btnSupprimerPatient"),
+    btnImporterPatients: $("btnImporterPatients"),
+    importPatientsFile: $("importPatientsFile"),
     civilite: $("civilite"),
     nom: $("nom"),
     prenom: $("prenom"),
@@ -1271,6 +1311,15 @@
     refreshPatientPicker(patientLabel(record));
     refreshNomseulPicker();
     setStatus(els.statusPatient, `Patient « ${patientLabel(record)} » enregistré.`, "ok");
+  });
+
+  els.btnImporterPatients.addEventListener("click", () => {
+    els.importPatientsFile.click();
+  });
+  els.importPatientsFile.addEventListener("change", () => {
+    const file = els.importPatientsFile.files && els.importPatientsFile.files[0];
+    if (file) importPatientsFromFile(file);
+    els.importPatientsFile.value = ""; // permet de resélectionner le même fichier plus tard
   });
 
   els.btnSupprimerPatient.addEventListener("click", () => {
