@@ -86,14 +86,35 @@
   .tile-nomseul { background: var(--accent-nomseul); }
   .tile-libre { background: var(--accent-libre); grid-column: span 2; }
   .btn-retour {
-    background: none;
-    border: none;
-    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--text-dark);
     font-size: 14px;
-    font-weight: 600;
-    padding: 8px 0 14px;
+    font-weight: 700;
+    padding: 10px 16px 10px 12px;
+    border-radius: 999px;
     cursor: pointer;
     text-align: left;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+  }
+  .btn-retour:active { background: #f0f0f0; }
+  .btn-retour .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--bg);
+    font-size: 15px;
+    line-height: 1;
   }
   .card-header {
     color: #fff;
@@ -306,7 +327,7 @@
 
 <!-- ============================= Étiquette patient ============================= -->
 <div class="module-view" id="module-patient" hidden>
-  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-patient">
   <div class="card-header">Étiquette patient</div>
   <div class="card-body">
@@ -405,7 +426,7 @@
 
 <!-- ============================= Préleveur et horodatage ============================= -->
 <div class="module-view" id="module-preleveur" hidden>
-  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-preleveur">
   <div class="card-header">Préleveur et horodatage</div>
   <div class="card-body">
@@ -448,7 +469,7 @@
 
 <!-- ============================= Étiquette de préparation ============================= -->
 <div class="module-view" id="module-prep" hidden>
-  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-prep">
   <div class="card-header">Étiquette de préparation (prélèvement à venir)</div>
   <div class="card-body">
@@ -499,7 +520,7 @@
 
 <!-- ============================= Étiquette nom seul ============================= -->
 <div class="module-view" id="module-nomseul" hidden>
-  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-nomseul">
   <div class="card-header">Étiquette nom seul</div>
   <div class="card-body">
@@ -542,7 +563,7 @@
 
 <!-- ============================= Étiquette texte libre ============================= -->
 <div class="module-view" id="module-libre" hidden>
-  <button class="btn-retour" type="button" data-back>‹ Retour aux catégories</button>
+  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-libre">
   <div class="card-header">Étiquette texte libre</div>
   <div class="card-body">
