@@ -175,6 +175,30 @@
     align-items: center;
   }
   .picker-row select { flex: 1; }
+  .suggest-wrap { position: relative; flex: 1; min-width: 0; }
+  .suggest {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 20;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .suggest li {
+    padding: 12px 12px;
+    font-size: 15px;
+    border-bottom: 1px solid #eef0f3;
+  }
+  .suggest li:last-child { border-bottom: none; }
+  .suggest li:active { background: var(--tint-patient); }
   .picker-row button {
     flex: 0 0 auto;
     min-width: 0;
@@ -333,9 +357,10 @@
   <div class="card-body">
     <label for="patientPicker">Patient enregistré</label>
     <div class="picker-row">
-      <select id="patientPicker">
-        <option value="">—</option>
-      </select>
+      <div class="suggest-wrap">
+        <input type="text" id="patientPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <ul class="suggest" id="patientSuggest" hidden></ul>
+      </div>
       <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer</button>
     </div>
     <div class="picker-row">
@@ -526,9 +551,10 @@
   <div class="card-body">
     <label for="nomseulPicker">Patient enregistré</label>
     <div class="picker-row">
-      <select id="nomseulPicker">
-        <option value="">—</option>
-      </select>
+      <div class="suggest-wrap">
+        <input type="text" id="nomseulPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <ul class="suggest" id="nomseulSuggest" hidden></ul>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -1074,15 +1100,10 @@ function patientLabel(p) {
     }
   }
 
-  async function ensureConnected() {
-    if (btDevice && btDevice.gatt.connected && writeChar) return;
-    if (!navigator.bluetooth) {
-      throw new Error("Bluetooth non disponible dans ce navigateur. Ouvrez cette page avec Bluefy.");
-    }
-    btDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "FICHERO" }, { namePrefix: "D11s_" }],
-      optionalServices: [SERVICE_UUID],
-    });
+  const PRINTER_FILTERS = [{ namePrefix: "FICHERO" }, { namePrefix: "D11s_" }];
+
+  async function openDevice(device) {
+    btDevice = device;
     btDevice.addEventListener("gattserverdisconnected", () => {
       writeChar = null;
       notifyChar = null;
@@ -1093,6 +1114,37 @@ function patientLabel(p) {
     notifyChar = await service.getCharacteristic(NOTIFY_UUID);
     await notifyChar.startNotifications();
     notifyChar.addEventListener("characteristicvaluechanged", onNotify);
+  }
+
+  // Reconnexion automatique : si le navigateur a déjà l'autorisation d'utiliser une
+  // imprimante FICHERO (appairée lors d'une connexion précédente), on s'y reconnecte
+  // sans afficher la fenêtre de choix. Renvoie false si ce n'est pas possible (pas de
+  // getDevices() dans ce navigateur, imprimante éteinte ou hors de portée...).
+  async function tryAutoConnect() {
+    if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== "function") return false;
+    try {
+      const known = await navigator.bluetooth.getDevices();
+      const printer = known.find((d) => d.name && PRINTER_FILTERS.some((f) => d.name.startsWith(f.namePrefix)));
+      if (!printer) return false;
+      await openDevice(printer);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function ensureConnected() {
+    if (btDevice && btDevice.gatt.connected && writeChar) return;
+    if (!navigator.bluetooth) {
+      throw new Error("Bluetooth non disponible dans ce navigateur. Ouvrez cette page avec Bluefy.");
+    }
+    if (await tryAutoConnect()) return;
+    // Sinon : première connexion, le navigateur impose de choisir l'imprimante dans sa liste.
+    const device = await navigator.bluetooth.requestDevice({
+      filters: PRINTER_FILTERS,
+      optionalServices: [SERVICE_UUID],
+    });
+    await openDevice(device);
   }
 
   async function send(bytes, wait, timeoutMs) {
@@ -1339,30 +1391,68 @@ function patientLabel(p) {
 
   // ===================== Patient =====================
 
+  // Champ de recherche avec suggestions : on tape des lettres du nom ou du prénom
+  // (accents et ordre sans importance) et la liste se réduit aux patients qui
+  // correspondent. Choisir une suggestion remplit le champ et déclenche "change".
+  function fold(s) {
+    return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+
+  function attachSearch(input, list) {
+    let labels = [];
+    let folded = [];
+
+    function hide() { list.hidden = true; list.innerHTML = ""; }
+
+    function choose(label) {
+      input.value = label;
+      hide();
+      input.blur();
+      input.dispatchEvent(new Event("change"));
+    }
+
+    input.addEventListener("input", () => {
+      const tokens = fold(input.value).split(/\s+/).filter(Boolean);
+      if (!tokens.length) { hide(); return; }
+      const hits = [];
+      labels.forEach((label, i) => {
+        if (tokens.every((t) => folded[i].includes(t))) hits.push(i);
+      });
+      hits.sort((a, b) => (folded[b].startsWith(tokens[0]) - folded[a].startsWith(tokens[0])) || (a - b));
+      list.innerHTML = "";
+      hits.slice(0, 30).forEach((i) => {
+        const li = document.createElement("li");
+        li.textContent = labels[i];
+        li.addEventListener("pointerdown", (e) => { e.preventDefault(); choose(labels[i]); });
+        list.appendChild(li);
+      });
+      list.hidden = hits.length === 0;
+    });
+    input.addEventListener("blur", () => setTimeout(hide, 150));
+
+    return {
+      setLabels(newLabels) {
+        labels = newLabels;
+        folded = newLabels.map(fold);
+      },
+    };
+  }
+
+  const patientSearch = attachSearch(els.patientPicker, $("patientSuggest"));
+  const nomseulSearch = attachSearch(els.nomseulPicker, $("nomseulSuggest"));
+
   let patients = loadPatients();
   let selectedPatientRecord = null; // référence vers le patient chargé, pour modifier sans dupliquer
 
   function refreshPatientPicker(selectLabel) {
     patients.sort((a, b) => (a.nom || "").localeCompare(b.nom || "") || (a.prenom || "").localeCompare(b.prenom || ""));
-    els.patientPicker.innerHTML = '<option value="">—</option>';
-    for (const p of patients) {
-      const opt = document.createElement("option");
-      opt.value = patientLabel(p);
-      opt.textContent = patientLabel(p);
-      els.patientPicker.appendChild(opt);
-    }
-    if (selectLabel) els.patientPicker.value = selectLabel;
+    patientSearch.setLabels(patients.map(patientLabel));
+    els.patientPicker.value = selectLabel || "";
   }
 
   function refreshNomseulPicker(selectLabel) {
-    els.nomseulPicker.innerHTML = '<option value="">—</option>';
-    for (const p of patients) {
-      const opt = document.createElement("option");
-      opt.value = patientLabel(p);
-      opt.textContent = patientLabel(p);
-      els.nomseulPicker.appendChild(opt);
-    }
-    if (selectLabel) els.nomseulPicker.value = selectLabel;
+    nomseulSearch.setLabels(patients.map(patientLabel));
+    els.nomseulPicker.value = selectLabel || "";
   }
 
   function currentFields() {
@@ -1895,6 +1985,11 @@ function patientLabel(p) {
   refreshNomseulPicker();
   updateNomseulPreview();
   updateLibrePreview();
+
+  // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
+  tryAutoConnect().then((ok) => {
+    if (ok) els.printerInfo.textContent = "Imprimante connectée automatiquement.";
+  });
 })();
 </script>
 
