@@ -347,6 +347,17 @@
     <button class="tile tile-nomseul" type="button" data-module="nomseul">Nom seul<br>(pour piluliers)</button>
     <button class="tile tile-libre" type="button" data-module="libre">Texte libre</button>
   </div>
+
+  <div class="card card-neutral">
+    <div class="card-body">
+      <label style="margin-top:0">Liste des patients</label>
+      <div class="picker-row">
+        <button id="btnImporterPatients" class="secondary" type="button">Importer depuis un fichier…</button>
+        <input type="file" id="importPatientsFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="hint">Choisir le patients.json du Mac (Fichiers → iCloud Drive → Antoine → 09 - Cabinet infirmier libéral → Labo &amp; prélèvements → Etiquettes PATIENTS → EtiquettesPrelevements) pour mettre à jour la liste sur ce téléphone.</div>
+    </div>
+  </div>
 </div>
 
 <!-- ============================= Étiquette patient ============================= -->
@@ -361,14 +372,8 @@
         <input type="text" id="patientPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <ul class="suggest" id="patientSuggest" hidden></ul>
       </div>
-      <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer</button>
+      <button id="btnEffacerRecherche" class="secondary" type="button">Effacer</button>
     </div>
-    <div class="picker-row">
-      <button id="btnImporterPatients" class="secondary" type="button">Importer depuis un fichier…</button>
-      <input type="file" id="importPatientsFile" accept="application/json,.json" style="display:none">
-    </div>
-    <div class="hint">Choisir le patients.json du Mac (Fichiers → iCloud Drive → Antoine → 09 - Cabinet infirmier libéral → Labo &amp; prélèvements → Etiquettes PATIENTS → EtiquettesPrelevements) pour mettre à jour la liste sur ce téléphone.</div>
-
     <div class="divider"></div>
 
     <label for="civilite">Civilité</label>
@@ -443,8 +448,23 @@
       <button id="btnImprimer" class="btn-patient" type="button">Imprimer</button>
       <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
       <button id="btnEffacer" class="secondary" type="button">Effacer</button>
+      <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer ce patient</button>
     </div>
     <div id="statusPatient" class="status"></div>
+
+    <div class="divider"></div>
+
+    <label style="margin-top:0">Horodatage (étiquette « Prélevé par »)</label>
+    <select id="hdPreleveur"></select>
+    <div class="row2" style="margin-top:8px">
+      <div><input type="text" id="hdDate" placeholder="JJ/MM/AAAA" inputmode="numeric"></div>
+      <div><input type="text" id="hdHeure" placeholder="HH:MM" inputmode="numeric"></div>
+    </div>
+    <div class="buttons">
+      <button id="btnHdMaintenant" class="secondary" type="button">Maintenant</button>
+      <button id="btnImprimerHd" class="btn-preleveur" type="button">Imprimer l'horodatage</button>
+    </div>
+    <div id="statusHd" class="status"></div>
   </div>
 </div>
 </div>
@@ -1236,6 +1256,13 @@ function patientLabel(p) {
     // patient
     patientPicker: $("patientPicker"),
     btnSupprimerPatient: $("btnSupprimerPatient"),
+    btnEffacerRecherche: $("btnEffacerRecherche"),
+    hdPreleveur: $("hdPreleveur"),
+    hdDate: $("hdDate"),
+    hdHeure: $("hdHeure"),
+    btnHdMaintenant: $("btnHdMaintenant"),
+    btnImprimerHd: $("btnImprimerHd"),
+    statusHd: $("statusHd"),
     btnImporterPatients: $("btnImporterPatients"),
     importPatientsFile: $("importPatientsFile"),
     civilite: $("civilite"),
@@ -1320,6 +1347,7 @@ function patientLabel(p) {
   };
 
   function showModule(name) {
+    if ((name === "patient" || name === "preleveur") && !hdManual) setPreleveurNow();
     els.moduleHome.hidden = true;
     for (const key of Object.keys(moduleViews)) {
       moduleViews[key].hidden = key !== name;
@@ -1381,6 +1409,8 @@ function patientLabel(p) {
   attachAutoFormat(els.ddn, formatDDMMYYYY);
   attachAutoFormat(els.preleveurDate, formatDDMMYYYY);
   attachAutoFormat(els.preleveurHeure, formatHHMM);
+  attachAutoFormat(els.hdDate, formatDDMMYYYY);
+  attachAutoFormat(els.hdHeure, formatHHMM);
   attachAutoFormat(els.prepDateOrdo, formatDDMMYYYY);
   attachAutoFormat(els.prepDateRdv, formatDateHeure);
 
@@ -1404,6 +1434,8 @@ function patientLabel(p) {
 
     function hide() { list.hidden = true; list.innerHTML = ""; }
 
+    let pressing = false; // doigt posé sur une suggestion : ne pas fermer la liste avant le clic
+
     function choose(label) {
       input.value = label;
       hide();
@@ -1423,14 +1455,21 @@ function patientLabel(p) {
       hits.slice(0, 30).forEach((i) => {
         const li = document.createElement("li");
         li.textContent = labels[i];
-        li.addEventListener("pointerdown", (e) => { e.preventDefault(); choose(labels[i]); });
+        li.addEventListener("pointerdown", () => { pressing = true; });
+        li.addEventListener("click", () => { pressing = false; choose(labels[i]); });
         list.appendChild(li);
       });
       list.hidden = hits.length === 0;
     });
-    input.addEventListener("blur", () => setTimeout(hide, 150));
+    input.addEventListener("blur", () => setTimeout(() => { if (!pressing) hide(); }, 150));
+    document.addEventListener("pointerup", () => setTimeout(() => { pressing = false; }, 600));
 
     return {
+      clear() {
+        input.value = "";
+        hide();
+        input.focus();
+      },
       setLabels(newLabels) {
         labels = newLabels;
         folded = newLabels.map(fold);
@@ -1577,14 +1616,17 @@ function patientLabel(p) {
     els.importPatientsFile.value = ""; // permet de resélectionner le même fichier plus tard
   });
 
+  els.btnEffacerRecherche.addEventListener("click", () => patientSearch.clear());
+
   els.btnSupprimerPatient.addEventListener("click", () => {
-    const label = els.patientPicker.value;
-    if (!label) {
-      setStatus(els.statusPatient, "Choisissez d'abord un patient dans la liste.", "err");
+    const match = (selectedPatientRecord && patients.includes(selectedPatientRecord))
+      ? selectedPatientRecord
+      : patients.find((p) => patientLabel(p) === els.patientPicker.value);
+    if (!match) {
+      setStatus(els.statusPatient, "Chargez d'abord un patient (recherche « Patient enregistré »).", "err");
       return;
     }
-    const match = patients.find((p) => patientLabel(p) === label);
-    if (!match) return;
+    const label = patientLabel(match);
     if (!confirm(`Supprimer définitivement « ${label} » de la liste des patients enregistrés ?`)) return;
     patients = patients.filter((p) => p !== match);
     savePatients(patients);
@@ -1639,6 +1681,8 @@ function patientLabel(p) {
     } else if (preleveurs.length && !els.preleveurPicker.value) {
       els.preleveurPicker.value = preleveurs[0].nom;
     }
+    els.hdPreleveur.innerHTML = els.preleveurPicker.innerHTML;
+    els.hdPreleveur.value = els.preleveurPicker.value;
   }
 
   function selectedPreleveur() {
@@ -1661,18 +1705,49 @@ function patientLabel(p) {
     return landscape;
   }
 
-  els.preleveurPicker.addEventListener("change", updatePreleveurPreview);
-  ["input", "change"].forEach((evt) => {
-    [els.preleveurDate, els.preleveurHeure].forEach((el) => el.addEventListener(evt, updatePreleveurPreview));
-  });
+  // Le bloc « Horodatage » sous l'étiquette patient et l'écran « Horodatage et préleveur »
+  // partagent les mêmes valeurs : toute modification de l'un est recopiée dans l'autre.
+  let hdManual = false; // true dès que la date/heure est saisie à la main (sinon on imprime « maintenant »)
 
-  els.btnMaintenant.addEventListener("click", () => {
+  function mirrorPreleveurFields(from, to) {
+    for (let i = 0; i < from.length; i++) {
+      if (to[i].value !== from[i].value) to[i].value = from[i].value;
+    }
+  }
+  const tabFields = [els.preleveurPicker, els.preleveurDate, els.preleveurHeure];
+  const hdFields = [els.hdPreleveur, els.hdDate, els.hdHeure];
+
+  function setPreleveurNow() {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, "0");
     els.preleveurDate.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
     els.preleveurHeure.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    hdManual = false;
+    mirrorPreleveurFields(tabFields, hdFields);
+    updatePreleveurPreview();
+  }
+
+  els.preleveurPicker.addEventListener("change", () => {
+    mirrorPreleveurFields(tabFields, hdFields);
     updatePreleveurPreview();
   });
+  els.hdPreleveur.addEventListener("change", () => {
+    mirrorPreleveurFields(hdFields, tabFields);
+    updatePreleveurPreview();
+  });
+  [els.preleveurDate, els.preleveurHeure].forEach((el) => el.addEventListener("input", () => {
+    hdManual = true;
+    mirrorPreleveurFields(tabFields, hdFields);
+    updatePreleveurPreview();
+  }));
+  [els.hdDate, els.hdHeure].forEach((el) => el.addEventListener("input", () => {
+    hdManual = true;
+    mirrorPreleveurFields(hdFields, tabFields);
+    updatePreleveurPreview();
+  }));
+
+  els.btnMaintenant.addEventListener("click", setPreleveurNow);
+  els.btnHdMaintenant.addEventListener("click", setPreleveurNow);
 
   els.btnNouveauPreleveur.addEventListener("click", () => {
     const nom = (prompt("Nom du préleveur :") || "").trim();
@@ -1701,34 +1776,40 @@ function patientLabel(p) {
     setStatus(els.statusPreleveur, `Préleveur « ${nom} » supprimé.`, "err");
   });
 
-  els.btnImprimerPreleveur.addEventListener("click", async () => {
+  async function printPreleveurLabel(button, statusEl) {
+    // Si la date/heure n'a pas été modifiée à la main, on imprime l'heure réelle du clic
+    // (et non celle d'ouverture de la page, qui peut dater de plusieurs heures).
+    if (!hdManual) setPreleveurNow();
     const { nom, am, rpps } = selectedPreleveur();
     const dateTexte = els.preleveurDate.value.trim();
     const heureTexte = els.preleveurHeure.value.trim();
     if (!nom) {
-      setStatus(els.statusPreleveur, "Merci de choisir un préleveur.", "err");
+      setStatus(statusEl, "Merci de choisir un préleveur.", "err");
       return;
     }
     if (!dateTexte && !heureTexte) {
-      setStatus(els.statusPreleveur, "Merci de renseigner au moins la date ou l'heure.", "err");
+      setStatus(statusEl, "Merci de renseigner au moins la date ou l'heure.", "err");
       return;
     }
 
     const landscape = updatePreleveurPreview();
 
-    els.btnImprimerPreleveur.disabled = true;
-    setStatus(els.statusPreleveur, "Connexion à l'imprimante FICHERO…");
+    button.disabled = true;
+    setStatus(statusEl, "Connexion à l'imprimante FICHERO…");
     try {
       await ensureConnected();
-      setStatus(els.statusPreleveur, "Impression en cours…");
+      setStatus(statusEl, "Impression en cours…");
       await printLandscapeCanvas(landscape, 1, DENSITY);
-      setStatus(els.statusPreleveur, "Étiquette imprimée.", "ok");
+      setStatus(statusEl, "Étiquette imprimée.", "ok");
     } catch (e) {
-      setStatus(els.statusPreleveur, `Erreur :\n${e.message || e}`, "err");
+      setStatus(statusEl, `Erreur :\n${e.message || e}`, "err");
     } finally {
-      els.btnImprimerPreleveur.disabled = false;
+      button.disabled = false;
     }
-  });
+  }
+
+  els.btnImprimerPreleveur.addEventListener("click", () => printPreleveurLabel(els.btnImprimerPreleveur, els.statusPreleveur));
+  els.btnImprimerHd.addEventListener("click", () => printPreleveurLabel(els.btnImprimerHd, els.statusHd));
 
   // ===================== Étiquette de préparation =====================
 
@@ -1976,11 +2057,7 @@ function patientLabel(p) {
   refreshPatientPicker();
   updatePreview();
   refreshPreleveurPicker();
-  const now0 = new Date();
-  const pad0 = (n) => String(n).padStart(2, "0");
-  els.preleveurDate.value = `${pad0(now0.getDate())}/${pad0(now0.getMonth() + 1)}/${now0.getFullYear()}`;
-  els.preleveurHeure.value = `${pad0(now0.getHours())}:${pad0(now0.getMinutes())}`;
-  updatePreleveurPreview();
+  setPreleveurNow();
   updatePrepPreview();
   refreshNomseulPicker();
   updateNomseulPreview();
