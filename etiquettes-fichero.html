@@ -1167,6 +1167,30 @@ function patientLabel(p) {
     await openDevice(device);
   }
 
+  // File d'attente d'impression : les impressions sont exécutées l'une après l'autre. Un clic
+  // sur « Imprimer » pendant qu'une étiquette s'imprime s'ajoute donc à la suite au lieu de
+  // provoquer une erreur (deux écritures Bluetooth simultanées).
+  let printChain = Promise.resolve();
+  let pendingPrints = 0;
+
+  async function printQueued(statusEl, landscape, copies) {
+    const ahead = pendingPrints;
+    pendingPrints++;
+    setStatus(statusEl, ahead ? `En file d'attente (${ahead} avant elle)…` : "Connexion à l'imprimante FICHERO…");
+    const run = printChain.then(async () => {
+      setStatus(statusEl, "Connexion à l'imprimante FICHERO…");
+      await ensureConnected();
+      setStatus(statusEl, "Impression en cours…");
+      await printLandscapeCanvas(landscape, copies, DENSITY);
+    });
+    printChain = run.catch(() => {});
+    try {
+      await run;
+    } finally {
+      pendingPrints--;
+    }
+  }
+
   async function send(bytes, wait, timeoutMs) {
     if (wait) notifyBuffer = [];
     await writeChar.writeValue(new Uint8Array(bytes));
@@ -1649,17 +1673,11 @@ function patientLabel(p) {
 
     const landscape = updatePreview();
 
-    els.btnImprimer.disabled = true;
-    setStatus(els.statusPatient, "Connexion à l'imprimante FICHERO…");
     try {
-      await ensureConnected();
-      setStatus(els.statusPatient, "Impression en cours…");
-      await printLandscapeCanvas(landscape, copies, DENSITY);
+      await printQueued(els.statusPatient, landscape, copies);
       setStatus(els.statusPatient, `${copies} étiquette(s) imprimée(s).`, "ok");
     } catch (e) {
       setStatus(els.statusPatient, `Erreur :\n${e.message || e}`, "err");
-    } finally {
-      els.btnImprimer.disabled = false;
     }
   });
 
@@ -1794,17 +1812,11 @@ function patientLabel(p) {
 
     const landscape = updatePreleveurPreview();
 
-    button.disabled = true;
-    setStatus(statusEl, "Connexion à l'imprimante FICHERO…");
     try {
-      await ensureConnected();
-      setStatus(statusEl, "Impression en cours…");
-      await printLandscapeCanvas(landscape, 1, DENSITY);
+      await printQueued(statusEl, landscape, 1);
       setStatus(statusEl, "Étiquette imprimée.", "ok");
     } catch (e) {
       setStatus(statusEl, `Erreur :\n${e.message || e}`, "err");
-    } finally {
-      button.disabled = false;
     }
   }
 
@@ -1903,17 +1915,11 @@ function patientLabel(p) {
 
     const landscape = updatePrepPreview();
 
-    els.btnImprimerPrep.disabled = true;
-    setStatus(els.statusPrep, "Connexion à l'imprimante FICHERO…");
     try {
-      await ensureConnected();
-      setStatus(els.statusPrep, "Impression en cours…");
-      await printLandscapeCanvas(landscape, 1, DENSITY);
+      await printQueued(els.statusPrep, landscape, 1);
       setStatus(els.statusPrep, "Étiquette de préparation imprimée.", "ok");
     } catch (e) {
       setStatus(els.statusPrep, `Erreur :\n${e.message || e}`, "err");
-    } finally {
-      els.btnImprimerPrep.disabled = false;
     }
   });
 
@@ -1976,17 +1982,11 @@ function patientLabel(p) {
 
     const landscape = updateNomseulPreview();
 
-    els.btnImprimerNomseul.disabled = true;
-    setStatus(els.statusNomseul, "Connexion à l'imprimante FICHERO…");
     try {
-      await ensureConnected();
-      setStatus(els.statusNomseul, "Impression en cours…");
-      await printLandscapeCanvas(landscape, copies, DENSITY);
+      await printQueued(els.statusNomseul, landscape, copies);
       setStatus(els.statusNomseul, `${copies} étiquette(s) imprimée(s).`, "ok");
     } catch (e) {
       setStatus(els.statusNomseul, `Erreur :\n${e.message || e}`, "err");
-    } finally {
-      els.btnImprimerNomseul.disabled = false;
     }
   });
 
@@ -2023,17 +2023,11 @@ function patientLabel(p) {
 
     const landscape = updateLibrePreview();
 
-    els.btnImprimerLibre.disabled = true;
-    setStatus(els.statusLibre, "Connexion à l'imprimante FICHERO…");
     try {
-      await ensureConnected();
-      setStatus(els.statusLibre, "Impression en cours…");
-      await printLandscapeCanvas(landscape, copies, DENSITY);
+      await printQueued(els.statusLibre, landscape, copies);
       setStatus(els.statusLibre, `${copies} étiquette(s) imprimée(s).`, "ok");
     } catch (e) {
       setStatus(els.statusLibre, `Erreur :\n${e.message || e}`, "err");
-    } finally {
-      els.btnImprimerLibre.disabled = false;
     }
   });
 
