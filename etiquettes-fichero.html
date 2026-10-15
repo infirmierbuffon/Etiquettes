@@ -372,7 +372,7 @@
         <input type="text" id="patientPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <ul class="suggest" id="patientSuggest" hidden></ul>
       </div>
-      <button id="btnEffacerRecherche" class="secondary" type="button">Effacer</button>
+      <button id="btnEffacer" class="secondary" type="button">Tout effacer</button>
     </div>
     <div class="divider"></div>
 
@@ -447,7 +447,6 @@
     <div class="buttons">
       <button id="btnImprimer" class="btn-patient" type="button">Imprimer</button>
       <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
-      <button id="btnEffacer" class="secondary" type="button">Effacer</button>
       <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer ce patient</button>
     </div>
     <div id="statusPatient" class="status"></div>
@@ -616,6 +615,14 @@
     <label for="libreTexte">Texte</label>
     <textarea id="libreTexte" rows="4" style="width:100%;padding:10px;font-size:16px;border:1px solid var(--border);border-radius:8px;font-family:inherit;resize:vertical;"></textarea>
     <div class="hint">une ligne par information</div>
+
+    <div class="buttons" style="margin-top:8px">
+      <button id="btnLibreGras" class="secondary" type="button">Mettre la sélection en gras</button>
+    </div>
+    <div class="toggles-row">
+      <span class="toggle-item"><input type="checkbox" id="libreToutGras">Tout en gras</span>
+    </div>
+    <div class="hint">Sélectionnez du texte puis touchez le bouton, ou entourez-le de **deux astérisques**.</div>
 
     <label for="libreCopies">Nombre d'étiquettes</label>
     <input type="number" id="libreCopies" value="1" min="1" max="30">
@@ -842,13 +849,22 @@ function patientLabel(p) {
     return [{ text: texte, weight: "bold" }];
   }
 
-  // Étiquette « texte libre » : chaque ligne tapée devient sa propre section
-  // "regular", mise en page comme les autres étiquettes (plus grande taille qui
-  // tient, retour à la ligne automatique). Les lignes vides sont ignorées.
-  function buildLibreSections(texte) {
-    const lignes = (texte || "").split("\n").map((l) => l.trim()).filter(Boolean);
-    if (!lignes.length) return [{ text: "(étiquette vide)", weight: "regular" }];
-    return lignes.map((ligne) => ({ text: ligne, weight: "regular" }));
+  // Étiquette « texte libre » : le texte peut être en gras en tout ou partie. Un passage
+  // entouré de **deux astérisques** est en gras (l'état se poursuit d'une ligne à l'autre
+  // jusqu'à la fermeture) ; « Tout en gras » met la totalité en gras. Renvoie une liste de
+  // lignes, chacune étant une liste de mots { word, bold }. Les lignes vides sont ignorées.
+  function parseRichText(texte, toutGras) {
+    const lines = [];
+    let bold = false;
+    for (const raw of (texte || "").split("\n")) {
+      const words = [];
+      raw.split("**").forEach((part, i) => {
+        if (i > 0) bold = !bold;
+        part.split(/\s+/).filter(Boolean).forEach((word) => words.push({ word, bold: bold || toutGras }));
+      });
+      if (words.length) lines.push(words);
+    }
+    return lines;
   }
 
   function breakLongWord(ctx, word, maxWidth, font) {
@@ -1060,6 +1076,106 @@ function patientLabel(p) {
       const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
       ctx.fillText(line.text, x, baselineY);
       if (line.weight === "bold") ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
+      cursor += line.ascent + line.descent + LINE_GAP;
+    }
+    return landscape;
+  }
+
+  // Comme composeSectionsCanvas, mais chaque ligne est une suite de mots pouvant être
+  // individuellement en gras ou non : un même corps de texte (le plus grand qui tient) est
+  // utilisé partout, seule la graisse change d'un mot à l'autre.
+  function composeRichCanvas(lines) {
+    const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
+    const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
+    const mctx = document.createElement("canvas").getContext("2d");
+
+    function splitToFit(word, font) {
+      mctx.font = font;
+      const pieces = [];
+      while (mctx.measureText(word).width > maxTextWidth && word.length > 1) {
+        let best = 1;
+        for (let k = 1; k <= word.length; k++) {
+          if (mctx.measureText(word.slice(0, k)).width <= maxTextWidth) best = k;
+          else break;
+        }
+        pieces.push(word.slice(0, best));
+        word = word.slice(best);
+      }
+      pieces.push(word);
+      return pieces;
+    }
+
+    function layoutAtSize(size) {
+      const fontReg = `${size}px ${FONT_FAMILY}`;
+      const fontBold = `bold ${size}px ${FONT_FAMILY}`;
+      mctx.font = fontReg;
+      const space = mctx.measureText(" ").width;
+      const out = [];
+      for (const words of lines) {
+        let cur = [];
+        let curW = 0;
+        for (const { word, bold } of words) {
+          const font = bold ? fontBold : fontReg;
+          splitToFit(word, font).forEach((piece, n) => {
+            mctx.font = font;
+            const w = mctx.measureText(piece).width;
+            let gap = (!cur.length || n > 0) ? 0 : space;
+            if (cur.length && curW + gap + w > maxTextWidth) {
+              out.push({ items: cur, width: curW });
+              cur = [];
+              curW = 0;
+              gap = 0;
+            }
+            cur.push({ text: piece, font, bold, x: curW + gap });
+            curW += gap + w;
+          });
+        }
+        if (cur.length) out.push({ items: cur, width: curW });
+      }
+      for (const line of out) {
+        let ascent = 0;
+        let descent = 0;
+        for (const it of line.items) {
+          const ink = measureLineInk(mctx, it.text, it.font);
+          ascent = Math.max(ascent, ink.ascent);
+          descent = Math.max(descent, ink.descent);
+        }
+        line.ascent = ascent;
+        line.descent = descent;
+      }
+      const totalH = out.reduce((sum, l) => sum + l.ascent + l.descent, 0)
+        + LINE_GAP * Math.max(out.length - 1, 0);
+      return { lines: out, totalH };
+    }
+
+    let chosen = null;
+    for (let size = 60; size >= 8; size--) {
+      const layout = layoutAtSize(size);
+      if (layout.totalH <= maxStackHeight) {
+        chosen = layout;
+        break;
+      }
+    }
+    if (!chosen) chosen = layoutAtSize(8);
+
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+
+    let cursor = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
+    for (const line of chosen.lines) {
+      const baselineY = cursor + line.ascent;
+      const x0 = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      for (const it of line.items) {
+        ctx.font = it.font;
+        ctx.fillText(it.text, x0 + it.x, baselineY);
+        if (it.bold) ctx.fillText(it.text, x0 + it.x + 1, baselineY); // léger renfort du gras
+      }
       cursor += line.ascent + line.descent + LINE_GAP;
     }
     return landscape;
@@ -1280,7 +1396,6 @@ function patientLabel(p) {
     // patient
     patientPicker: $("patientPicker"),
     btnSupprimerPatient: $("btnSupprimerPatient"),
-    btnEffacerRecherche: $("btnEffacerRecherche"),
     hdPreleveur: $("hdPreleveur"),
     hdDate: $("hdDate"),
     hdHeure: $("hdHeure"),
@@ -1348,6 +1463,8 @@ function patientLabel(p) {
     // texte libre
     libreTexte: $("libreTexte"),
     libreCopies: $("libreCopies"),
+    btnLibreGras: $("btnLibreGras"),
+    libreToutGras: $("libreToutGras"),
     librePreviewCanvas: $("librePreviewCanvas"),
     statusLibre: $("statusLibre"),
     btnImprimerLibre: $("btnImprimerLibre"),
@@ -1430,6 +1547,19 @@ function patientLabel(p) {
     });
   }
 
+  // NOM, nom de naissance et commune : majuscules automatiques dès la frappe.
+  function attachUpper(el) {
+    el.addEventListener("input", () => {
+      const up = el.value.toUpperCase();
+      if (el.value !== up) {
+        const pos = el.selectionStart;
+        el.value = up;
+        try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ }
+      }
+    });
+  }
+  [els.nom, els.nomNaissance, els.commune, els.prepNom, els.nomseulNom].forEach(attachUpper);
+
   attachAutoFormat(els.ddn, formatDDMMYYYY);
   attachAutoFormat(els.preleveurDate, formatDDMMYYYY);
   attachAutoFormat(els.preleveurHeure, formatHHMM);
@@ -1489,11 +1619,6 @@ function patientLabel(p) {
     document.addEventListener("pointerup", () => setTimeout(() => { pressing = false; }, 600));
 
     return {
-      clear() {
-        input.value = "";
-        hide();
-        input.focus();
-      },
       setLabels(newLabels) {
         labels = newLabels;
         folded = newLabels.map(fold);
@@ -1591,14 +1716,14 @@ function patientLabel(p) {
     if (!match) { selectedPatientRecord = null; return; }
     selectedPatientRecord = match;
     els.civilite.value = match.civilite || "";
-    els.nom.value = match.nom || "";
+    els.nom.value = (match.nom || "").toUpperCase();
     els.prenom.value = match.prenom || "";
-    els.nomNaissance.value = match.nomNaissance || match.nom_naissance || "";
+    els.nomNaissance.value = (match.nomNaissance || match.nom_naissance || "").toUpperCase();
     els.ddn.value = match.ddn || "";
     els.sexe.value = match.sexe || "";
     els.adresse.value = match.adresse || "";
     els.codepostal.value = match.codepostal || "";
-    els.commune.value = match.commune || "";
+    els.commune.value = (match.commune || "").toUpperCase();
     els.telephone.value = match.telephone || "";
     els.email.value = match.email || "";
     els.nir.value = match.nir || "";
@@ -1639,8 +1764,6 @@ function patientLabel(p) {
     if (file) importPatientsFromFile(file);
     els.importPatientsFile.value = ""; // permet de resélectionner le même fichier plus tard
   });
-
-  els.btnEffacerRecherche.addEventListener("click", () => patientSearch.clear());
 
   els.btnSupprimerPatient.addEventListener("click", () => {
     const match = (selectedPatientRecord && patients.includes(selectedPatientRecord))
@@ -1955,7 +2078,7 @@ function patientLabel(p) {
     const label = els.nomseulPicker.value;
     const match = patients.find((p) => patientLabel(p) === label);
     if (!match) return;
-    els.nomseulNom.value = match.nom || "";
+    els.nomseulNom.value = (match.nom || "").toUpperCase();
     els.nomseulPrenom.value = match.prenom || "";
     updateNomseulPreview();
   });
@@ -1993,7 +2116,10 @@ function patientLabel(p) {
   // ===================== Étiquette texte libre =====================
 
   function updateLibrePreview() {
-    const landscape = composeSectionsCanvas(buildLibreSections(els.libreTexte.value));
+    const lines = parseRichText(els.libreTexte.value, els.libreToutGras.checked);
+    const landscape = lines.length
+      ? composeRichCanvas(lines)
+      : composeSectionsCanvas([{ text: "(étiquette vide)", weight: "regular" }]);
     const target = els.librePreviewCanvas;
     target.width = landscape.width;
     target.height = landscape.height;
@@ -2004,9 +2130,31 @@ function patientLabel(p) {
   }
 
   els.libreTexte.addEventListener("input", updateLibrePreview);
+  els.libreToutGras.addEventListener("change", updateLibrePreview);
+
+  // Entoure la sélection de ** (ou retire les ** si elle en est déjà entourée).
+  els.btnLibreGras.addEventListener("click", () => {
+    const ta = els.libreTexte;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) {
+      setStatus(els.statusLibre, "Sélectionnez d'abord le texte à mettre en gras.", "err");
+      return;
+    }
+    const sel = ta.value.slice(start, end);
+    const repl = (sel.length >= 4 && sel.startsWith("**") && sel.endsWith("**"))
+      ? sel.slice(2, -2)
+      : `**${sel}**`;
+    ta.value = ta.value.slice(0, start) + repl + ta.value.slice(end);
+    ta.focus();
+    ta.setSelectionRange(start, start + repl.length);
+    setStatus(els.statusLibre, "");
+    updateLibrePreview();
+  });
 
   els.btnEffacerLibre.addEventListener("click", () => {
     els.libreTexte.value = "";
+    els.libreToutGras.checked = false;
     els.libreCopies.value = 1;
     updateLibrePreview();
     setStatus(els.statusLibre, "Prêt.");
