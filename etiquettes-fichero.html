@@ -1105,7 +1105,9 @@ function patientLabel(p) {
       return pieces;
     }
 
-    function layoutAtSize(size) {
+    // En mode strict, renvoie null si un mot est trop large pour l'étiquette à cette taille :
+    // on préfère alors une police plus petite plutôt que de couper le mot en deux.
+    function layoutAtSize(size, strict = true) {
       const fontReg = `${size}px ${FONT_FAMILY}`;
       const fontBold = `bold ${size}px ${FONT_FAMILY}`;
       mctx.font = fontReg;
@@ -1116,6 +1118,10 @@ function patientLabel(p) {
         let curW = 0;
         for (const { word, bold } of words) {
           const font = bold ? fontBold : fontReg;
+          if (strict) {
+            mctx.font = font;
+            if (mctx.measureText(word).width > maxTextWidth) return null;
+          }
           splitToFit(word, font).forEach((piece, n) => {
             mctx.font = font;
             const w = mctx.measureText(piece).width;
@@ -1151,12 +1157,12 @@ function patientLabel(p) {
     let chosen = null;
     for (let size = 60; size >= 8; size--) {
       const layout = layoutAtSize(size);
-      if (layout.totalH <= maxStackHeight) {
+      if (layout && layout.totalH <= maxStackHeight) {
         chosen = layout;
         break;
       }
     }
-    if (!chosen) chosen = layoutAtSize(8);
+    if (!chosen) chosen = layoutAtSize(8, false);
 
     const landscape = document.createElement("canvas");
     landscape.width = MAX_ROWS;
