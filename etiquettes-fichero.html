@@ -2854,11 +2854,14 @@ function patientLabel(p) {
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
   }
 
-  // « Pharmacie **CAEN** » : le nom de la pharmacie en gras, sur une seule ligne.
+  // Deux lignes : « Pharmacie » en petit, puis le nom de la pharmacie en gras, le plus grand possible.
   function composePharmacieCanvas(nom) {
     nom = (nom || "").trim().replace(/^pharmacie\s+/i, "").toUpperCase();
     if (!nom) return composeSectionsCanvas([{ text: "Autre pharmacie", weight: "bold" }], true);
-    return composeSectionsCanvas([{ text: `Pharmacie **${nom}**`, weight: "name" }], true);
+    return composeRichCanvas([
+      { words: [{ word: "Pharmacie", bold: false }], scale: 0.7 },
+      { words: nom.split(/\s+/).map((word) => ({ word, bold: true })), scale: 1 },
+    ]);
   }
 
   // Étiquette à coller sur la boîte du casier patient : « Valable jusqu'au JJ/MM/AAAA » et une
