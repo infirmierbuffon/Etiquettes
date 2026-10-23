@@ -33,6 +33,10 @@
     --accent-libre: #db2777;
     --tint-libre: #fdecf3;
     --accent-libre-dark: #be185d;
+
+    --accent-pharma: #0d9488;
+    --tint-pharma: #e6f7f5;
+    --accent-pharma-dark: #0f766e;
   }
   * { box-sizing: border-box; }
   body {
@@ -84,7 +88,8 @@
   .tile-preleveur { background: var(--accent-preleveur); }
   .tile-prep { background: var(--accent-prep); }
   .tile-nomseul { background: var(--accent-nomseul); }
-  .tile-libre { background: var(--accent-libre); grid-column: span 2; }
+  .tile-libre { background: var(--accent-libre); }
+  .tile-pharma { background: var(--accent-pharma); }
   .btn-retour {
     display: inline-flex;
     align-items: center;
@@ -135,6 +140,8 @@
   .card-nomseul .card-body { background: var(--tint-nomseul); }
   .card-libre .card-header { background: var(--accent-libre); }
   .card-libre .card-body { background: var(--tint-libre); }
+  .card-pharma .card-header { background: var(--accent-pharma); }
+  .card-pharma .card-body { background: var(--tint-pharma); }
   .card-neutral .card-body { background: #fbfbfc; }
 
   label {
@@ -249,6 +256,19 @@
   button.btn-nomseul:active { background: var(--accent-nomseul-dark); }
   button.btn-libre { background: var(--accent-libre); }
   button.btn-libre:active { background: var(--accent-libre-dark); }
+  button.btn-pharma { background: var(--accent-pharma); }
+  button.btn-pharma:active { background: var(--accent-pharma-dark); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 10px 14px;
+    background: #fff;
+    color: var(--accent-pharma);
+    border: 2px solid var(--accent-pharma);
+  }
+  .chip.active { background: var(--accent-pharma); color: #fff; }
+  .resume-ordo { margin-top: 10px; font-size: 14px; font-weight: 700; }
   button.secondary {
     background: #e5e7eb;
     color: #333;
@@ -400,6 +420,7 @@
     <button class="tile tile-patient" type="button" data-module="patient">Etiquettes<br>prélèvements</button>
     <button class="tile tile-preleveur" type="button" data-module="preleveur">Horodatage<br>et préleveur</button>
     <button class="tile tile-prep" type="button" data-module="prep">Préparer les boîtes<br>de prélèvement</button>
+    <button class="tile tile-pharma" type="button" data-module="pharma">Pharmacies et<br>ordonnances</button>
     <button class="tile tile-nomseul" type="button" data-module="nomseul">Pilulier</button>
     <button class="tile tile-libre" type="button" data-module="libre">Texte libre</button>
   </div>
@@ -614,6 +635,68 @@
 
     <label for="prepCommentaire">Commentaire</label>
     <input type="text" id="prepCommentaire" placeholder="ex : à congeler dans 30 min">
+  </div>
+</div>
+</div>
+
+<!-- ============================= Pharmacies et ordonnances ============================= -->
+<div class="module-view" id="module-pharma" hidden>
+<div class="card card-pharma">
+  <div class="card-header">Pharmacie du patient</div>
+  <div class="card-body">
+    <label style="margin-top:0">Pharmacie</label>
+    <div class="chips" id="pharmaChips"></div>
+    <div id="pharmaAutreWrap" hidden>
+      <label for="pharmaAutre">Nom de l'autre pharmacie</label>
+      <input type="text" id="pharmaAutre" autocomplete="off" autocapitalize="words">
+    </div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="pharmaPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <label for="pharmaCopies">Nombre d'étiquettes</label>
+    <input type="number" id="pharmaCopies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimerPharma" class="btn-pharma" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusPharma" class="status"></div>
+  </div>
+</div>
+
+<div class="card card-pharma">
+  <div class="card-header">Ordonnance : valable jusqu'au…</div>
+  <div class="card-body">
+    <label style="margin-top:0" for="ordoDate">Date de l'ordonnance</label>
+    <div class="row2">
+      <div><input type="text" id="ordoDate" placeholder="JJ/MM/AAAA" inputmode="numeric"></div>
+      <div style="flex:0 0 auto">
+        <button id="btnOrdoToday" class="secondary" type="button" style="min-width:0;padding:10px 12px;">Aujourd'hui</button>
+      </div>
+    </div>
+
+    <label>Durée de validité</label>
+    <div class="chips" id="ordoChips"></div>
+    <label for="ordoMois">Autre durée</label>
+    <select id="ordoMois"></select>
+
+    <div class="resume-ordo" id="ordoResume"></div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="ordoPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <label for="ordoCopies">Nombre d'étiquettes</label>
+    <input type="number" id="ordoCopies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimerOrdo" class="btn-pharma" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusOrdo" class="status"></div>
+    <div class="hint">Une case à cocher par mois de validité : faites une croix à la main à chaque dispensation.</div>
   </div>
 </div>
 </div>
@@ -1912,6 +1995,7 @@ function patientLabel(p) {
     patient: $("module-patient"),
     preleveur: $("module-preleveur"),
     prep: $("module-prep"),
+    pharma: $("module-pharma"),
     nomseul: $("module-nomseul"),
     libre: $("module-libre"),
   };
@@ -2730,6 +2814,191 @@ function patientLabel(p) {
       `${horaires.length * etiquettes} étiquettes imprimées (${horaires.length} horaires).`);
   });
 
+  // ===================== Pharmacies et ordonnances =====================
+
+  const PHARMACIES = ["CAEN", "BUFFON", "DELORME", "PERVILLA"];
+  const DUREES_ORDO = [1, 3, 6, 12]; // les plus courantes ; toutes les durées de 1 à 12 mois sont possibles
+
+  function parseDateFr(texte) {
+    const chiffres = (texte || "").replace(/\D/g, "");
+    if (chiffres.length !== 8) return null;
+    const j = parseInt(chiffres.slice(0, 2), 10);
+    const m = parseInt(chiffres.slice(2, 4), 10);
+    const a = parseInt(chiffres.slice(4), 10);
+    const d = new Date(a, m - 1, j);
+    return (d.getFullYear() === a && d.getMonth() === m - 1 && d.getDate() === j) ? d : null;
+  }
+
+  // Même jour du mois, n mois plus tard (ramené à la fin du mois si le jour n'existe pas).
+  function addMonths(d, n) {
+    const idx = d.getMonth() + n;
+    const annee = d.getFullYear() + Math.floor(idx / 12);
+    const mois = ((idx % 12) + 12) % 12;
+    const dernier = new Date(annee, mois + 1, 0).getDate();
+    return new Date(annee, mois, Math.min(d.getDate(), dernier));
+  }
+
+  function formatDateFr(d) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  // « Pharmacie **CAEN** » : le nom de la pharmacie en gras, sur une seule ligne.
+  function composePharmacieCanvas(nom) {
+    nom = (nom || "").trim().replace(/^pharmacie\s+/i, "").toUpperCase();
+    if (!nom) return composeSectionsCanvas([{ text: "Autre pharmacie", weight: "bold" }], true);
+    return composeSectionsCanvas([{ text: `Pharmacie **${nom}**`, weight: "name" }], true);
+  }
+
+  // Étiquette à coller sur la boîte du casier patient : « Valable jusqu'au JJ/MM/AAAA » et une
+  // case à cocher par mois de validité (une croix à la main à chaque dispensation).
+  function composeOrdoCanvas(dateTxt, mois) {
+    const debut = parseDateFr(dateTxt);
+    if (!debut) return composeSectionsCanvas([{ text: "(date d'ordonnance invalide)", weight: "regular" }]);
+    mois = Math.max(1, Math.min(12, mois));
+    const fin = addMonths(debut, mois);
+
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+
+    const xLeft = PICTO_AREA_X + 2;
+    const areaW = PICTO_AREA_W - 4;
+    const fit1 = fitLines(ctx, `Ordonnance du ${formatDateFr(debut)} (${mois} mois)`, areaW, 22, false, 60, false);
+    const fit2 = fitLines(ctx, `Valable jusqu'au ${formatDateFr(fin)}`, areaW, 36, true, 60, false);
+    const side = 26;
+    const gap = 5;
+    const total = fit1.h + gap + fit2.h + gap + side;
+    let y = Math.max(3, Math.round((PRINTHEAD_PX - total) / 2));
+
+    const drawFit = (fit, top, bold) => {
+      ctx.font = fit.font;
+      const ink = fit.inks[0];
+      const x = Math.round(xLeft + (areaW - ink.width) / 2);
+      ctx.fillText(fit.lines[0], x, Math.round(top + ink.ascent));
+      if (bold) ctx.fillText(fit.lines[0], x + 1, Math.round(top + ink.ascent)); // léger renfort du gras
+    };
+    drawFit(fit1, y, false);
+    y += fit1.h + gap;
+    drawFit(fit2, y, true);
+    y += fit2.h + gap;
+
+    const slot = areaW / mois;
+    const box = Math.floor(Math.min(side, slot - 6));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#000";
+    for (let i = 0; i < mois; i++) {
+      const x = Math.round(xLeft + slot * i + (slot - box) / 2);
+      ctx.strokeRect(x + 1, y + 1, box - 2, box - 2);
+    }
+    return landscape;
+  }
+
+  // --- Pharmacie du patient ---
+
+  let pharmaChoix = PHARMACIES[0];
+
+  function pharmaNom() {
+    return pharmaChoix === "AUTRE" ? els.pharmaAutre.value : pharmaChoix;
+  }
+
+  function updatePharmaPreview() {
+    return paintPreview(els.pharmaPreviewCanvas, composePharmacieCanvas(pharmaNom()));
+  }
+
+  function buildPharmaChips() {
+    els.pharmaChips.innerHTML = "";
+    const options = PHARMACIES.map((n) => [n, n.charAt(0) + n.slice(1).toLowerCase()]).concat([["AUTRE", "Autre pharmacie"]]);
+    for (const [value, text] of options) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip" + (value === pharmaChoix ? " active" : "");
+      btn.textContent = text;
+      btn.addEventListener("click", () => {
+        pharmaChoix = value;
+        els.pharmaAutreWrap.hidden = value !== "AUTRE";
+        buildPharmaChips();
+        updatePharmaPreview();
+      });
+      els.pharmaChips.appendChild(btn);
+    }
+  }
+
+  els.pharmaAutre.addEventListener("input", updatePharmaPreview);
+
+  els.btnImprimerPharma.addEventListener("click", async () => {
+    const copies = clampInt(els.pharmaCopies.value, 1, 30, 1);
+    await printSequence(els.statusPharma, [{ canvas: updatePharmaPreview(), copies }],
+      `${copies} étiquette(s) imprimée(s).`);
+  });
+
+  // --- Ordonnance ---
+
+  function ordoMoisValue() {
+    return clampInt(els.ordoMois.value, 1, 12, 3);
+  }
+
+  function updateOrdoPreview() {
+    const mois = ordoMoisValue();
+    const debut = parseDateFr(els.ordoDate.value);
+    if (!debut) {
+      els.ordoResume.textContent = "Date à saisir au format JJ/MM/AAAA";
+      els.ordoResume.style.color = "var(--err)";
+    } else {
+      els.ordoResume.textContent = `Valable jusqu'au ${formatDateFr(addMonths(debut, mois))} — ${mois} case(s) à cocher`;
+      els.ordoResume.style.color = "";
+    }
+    return paintPreview(els.ordoPreviewCanvas, composeOrdoCanvas(els.ordoDate.value, mois));
+  }
+
+  function buildOrdoChips() {
+    els.ordoChips.innerHTML = "";
+    for (const m of DUREES_ORDO) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip" + (m === ordoMoisValue() ? " active" : "");
+      btn.textContent = `${m} mois`;
+      btn.addEventListener("click", () => {
+        els.ordoMois.value = String(m);
+        buildOrdoChips();
+        updateOrdoPreview();
+      });
+      els.ordoChips.appendChild(btn);
+    }
+  }
+
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement("option");
+    opt.value = String(m);
+    opt.textContent = `${m} mois`;
+    els.ordoMois.appendChild(opt);
+  }
+  els.ordoMois.value = "3";
+  els.ordoMois.addEventListener("change", () => { buildOrdoChips(); updateOrdoPreview(); });
+  attachAutoFormat(els.ordoDate, formatDDMMYYYY);
+  els.ordoDate.addEventListener("input", updateOrdoPreview);
+
+  function setOrdoToday() {
+    els.ordoDate.value = formatDateFr(new Date());
+    updateOrdoPreview();
+  }
+  els.btnOrdoToday.addEventListener("click", setOrdoToday);
+
+  els.btnImprimerOrdo.addEventListener("click", async () => {
+    if (!parseDateFr(els.ordoDate.value)) {
+      setStatus(els.statusOrdo, "Merci de saisir la date de l'ordonnance (JJ/MM/AAAA).", "err");
+      return;
+    }
+    const copies = clampInt(els.ordoCopies.value, 1, 30, 1);
+    await printSequence(els.statusOrdo, [{ canvas: updateOrdoPreview(), copies }],
+      `${copies} étiquette(s) imprimée(s).`);
+  });
+
   // ===================== Étiquette texte libre =====================
 
   function libreOptions() {
@@ -2876,6 +3145,10 @@ function patientLabel(p) {
   updatePictoPreview();
   updateHorairesPreview();
   updateLibrePreview();
+  buildPharmaChips();
+  updatePharmaPreview();
+  setOrdoToday();
+  buildOrdoChips();
 
   // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
   tryAutoConnect().then((ok) => {
