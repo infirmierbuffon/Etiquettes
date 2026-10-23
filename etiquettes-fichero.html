@@ -269,6 +269,9 @@
   }
   .chip.active { background: var(--accent-pharma); color: #fff; }
   .resume-ordo { margin-top: 10px; font-size: 14px; font-weight: 700; }
+  .cal-wrap, .row2 > .cal-wrap { position: relative; flex: 0 0 auto; }
+  .cal-wrap button { min-width: 0; padding: 10px 12px; }
+  .cal-wrap input[type="date"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
   button.secondary {
     background: #e5e7eb;
     color: #333;
@@ -616,6 +619,10 @@
       <div>
         <input type="text" id="prepDateOrdo" placeholder="JJ/MM/AAAA" inputmode="numeric">
       </div>
+      <div class="cal-wrap">
+        <button class="btn-prep" type="button" tabindex="-1">📅</button>
+        <input type="date" id="prepDatePicker" aria-label="Choisir la date dans le calendrier">
+      </div>
       <div style="flex:0 0 auto">
         <button id="btnPrepAujourdhui" class="secondary" type="button" style="min-width:0;padding:10px 12px;">Aujourd'hui</button>
       </div>
@@ -672,6 +679,10 @@
     <label style="margin-top:0" for="ordoDate">Date de l'ordonnance</label>
     <div class="row2">
       <div><input type="text" id="ordoDate" placeholder="JJ/MM/AAAA" inputmode="numeric"></div>
+      <div class="cal-wrap">
+        <button class="btn-pharma" type="button" tabindex="-1">📅</button>
+        <input type="date" id="ordoDatePicker" aria-label="Choisir la date dans le calendrier">
+      </div>
       <div style="flex:0 0 auto">
         <button id="btnOrdoToday" class="secondary" type="button" style="min-width:0;padding:10px 12px;">Aujourd'hui</button>
       </div>
@@ -2988,6 +2999,27 @@ function patientLabel(p) {
     updateOrdoPreview();
   }
   els.btnOrdoToday.addEventListener("click", setOrdoToday);
+
+  // Calendrier : le sélecteur de date du téléphone remplit le champ texte (qui reste modifiable
+  // à la main) ; le calendrier s'ouvre sur la date déjà saisie.
+  function attachCalendar(textEl, pickerEl) {
+    const pad = (n) => String(n).padStart(2, "0");
+    const sync = () => {
+      const d = parseDateFr(textEl.value);
+      pickerEl.value = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : "";
+    };
+    pickerEl.addEventListener("change", () => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(pickerEl.value);
+      if (!m) return;
+      textEl.value = `${m[3]}/${m[2]}/${m[1]}`;
+      textEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    textEl.addEventListener("input", sync);
+    pickerEl.addEventListener("pointerdown", sync);
+    sync();
+  }
+  attachCalendar(els.ordoDate, els.ordoDatePicker);
+  attachCalendar(els.prepDateOrdo, els.prepDatePicker);
 
   els.btnImprimerOrdo.addEventListener("click", async () => {
     if (!parseDateFr(els.ordoDate.value)) {
