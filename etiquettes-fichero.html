@@ -323,28 +323,71 @@
     width: 17px;
     height: 17px;
   }
+  .section-title { font-size: 14px; font-weight: 700; margin: 4px 0 8px; }
+  .topbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    padding: 6px 0 8px;
+    margin-bottom: 6px;
+  }
+  .topbar .btn-retour { position: static; margin: 0; flex: 0 0 auto; }
+  .topbar .btn-imprimante {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    color: #333;
+  }
+  #printerInfo { margin: 0 0 8px; }
+  #printerInfo:empty { display: none; }
+  .jours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .jours-grid button { min-width: 0; }
+  .picto-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+  .picto-tile {
+    min-width: 0;
+    padding: 6px 2px;
+    background: #fff;
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .picto-tile canvas { width: 100%; max-width: 56px; height: auto; }
+  .picto-tile:active { background: var(--tint-nomseul); }
+  .picto-content { margin-top: 10px; font-size: 14px; font-weight: 700; }
 </style>
 </head>
 <body>
 
-<h1>Étiquettes de prélèvement</h1>
-<div class="subtitle">Imprimante FICHERO Bluetooth — via Web Bluetooth (nécessite Bluefy sur iPhone)</div>
-
-<div class="card card-neutral">
-  <div class="card-body">
-    <div class="buttons" style="margin-top:0">
-      <button id="btnConnecter" class="secondary" type="button">Connecter l'imprimante</button>
-    </div>
-    <div id="printerInfo"></div>
-  </div>
+<div id="homeHeader">
+  <h1>Étiquettes de prélèvement</h1>
+  <div class="subtitle">Imprimante FICHERO Bluetooth — via Web Bluetooth (nécessite Bluefy sur iPhone)</div>
 </div>
+
+<div class="topbar" id="topbar">
+  <button class="btn-retour" id="btnRetour" type="button" data-back hidden><span class="icon">‹</span> Retour</button>
+  <button id="btnConnecter" class="btn-imprimante" type="button">Connecter l'imprimante</button>
+</div>
+<div id="printerInfo"></div>
 
 <div id="moduleHome">
   <div class="tile-grid">
     <button class="tile tile-patient" type="button" data-module="patient">Etiquettes<br>prélèvements</button>
     <button class="tile tile-preleveur" type="button" data-module="preleveur">Horodatage<br>et préleveur</button>
-    <button class="tile tile-prep" type="button" data-module="prep">Préparation</button>
-    <button class="tile tile-nomseul" type="button" data-module="nomseul">Nom seul<br>(pour piluliers)</button>
+    <button class="tile tile-prep" type="button" data-module="prep">Préparer les boîtes<br>de prélèvement</button>
+    <button class="tile tile-nomseul" type="button" data-module="nomseul">Pilulier</button>
     <button class="tile tile-libre" type="button" data-module="libre">Texte libre</button>
   </div>
 
@@ -362,7 +405,6 @@
 
 <!-- ============================= Étiquette patient ============================= -->
 <div class="module-view" id="module-patient" hidden>
-  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-patient">
   <div class="card-header">Étiquette patient</div>
   <div class="card-body">
@@ -374,7 +416,46 @@
       </div>
       <button id="btnEffacer" class="secondary" type="button">Tout effacer</button>
     </div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="previewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="toggles-row" style="margin-top:10px">
+      <span class="toggle-item"><input type="checkbox" id="showNaissance" checked>Naissance</span>
+      <span class="toggle-item"><input type="checkbox" id="showAdresse" checked>Adresse</span>
+      <span class="toggle-item"><input type="checkbox" id="showEmail">Email</span>
+      <span class="toggle-item"><input type="checkbox" id="showNir">NIR</span>
+    </div>
+
+    <label for="copies">Nombre d'étiquettes</label>
+    <input type="number" id="copies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimer" class="btn-patient" type="button">Imprimer</button>
+      <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
+      <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer ce patient</button>
+    </div>
+    <div id="statusPatient" class="status"></div>
+
     <div class="divider"></div>
+
+    <div class="section-title">Horodatage (étiquette « Prélevé par »)</div>
+    <select id="hdPreleveur"></select>
+    <div class="row2" style="margin-top:8px">
+      <div><input type="text" id="hdDate" placeholder="JJ/MM/AAAA" inputmode="numeric"></div>
+      <div><input type="text" id="hdHeure" placeholder="HH:MM" inputmode="numeric"></div>
+    </div>
+    <div class="buttons">
+      <button id="btnHdMaintenant" class="secondary" type="button">Maintenant</button>
+      <button id="btnImprimerHd" class="btn-preleveur" type="button">Imprimer l'horodatage</button>
+    </div>
+    <div id="statusHd" class="status"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Informations du patient</div>
 
     <label for="civilite">Civilité</label>
     <select id="civilite">
@@ -425,61 +506,24 @@
 
     <label for="nir">NIR (n° de sécu)</label>
     <input type="text" id="nir" inputmode="numeric">
-
-    <div class="divider"></div>
-
-    <label>Sur l'étiquette :</label>
-    <div class="toggles-row">
-      <span class="toggle-item"><input type="checkbox" id="showNaissance" checked>Naissance</span>
-      <span class="toggle-item"><input type="checkbox" id="showAdresse" checked>Adresse</span>
-      <span class="toggle-item"><input type="checkbox" id="showEmail">Email</span>
-      <span class="toggle-item"><input type="checkbox" id="showNir">NIR</span>
-    </div>
-
-    <label for="copies">Nombre d'étiquettes</label>
-    <input type="number" id="copies" value="1" min="1" max="30">
-
-    <label style="margin-top:14px">Aperçu</label>
-    <div class="preview-wrap">
-      <canvas id="previewCanvas" class="preview-canvas" width="400" height="96"></canvas>
-    </div>
-
-    <div class="buttons">
-      <button id="btnImprimer" class="btn-patient" type="button">Imprimer</button>
-      <button id="btnEnregistrer" class="secondary" type="button">Enregistrer le patient</button>
-      <button id="btnSupprimerPatient" class="secondary" type="button">Supprimer ce patient</button>
-    </div>
-    <div id="statusPatient" class="status"></div>
-
-    <div class="divider"></div>
-
-    <label style="margin-top:0">Horodatage (étiquette « Prélevé par »)</label>
-    <select id="hdPreleveur"></select>
-    <div class="row2" style="margin-top:8px">
-      <div><input type="text" id="hdDate" placeholder="JJ/MM/AAAA" inputmode="numeric"></div>
-      <div><input type="text" id="hdHeure" placeholder="HH:MM" inputmode="numeric"></div>
-    </div>
-    <div class="buttons">
-      <button id="btnHdMaintenant" class="secondary" type="button">Maintenant</button>
-      <button id="btnImprimerHd" class="btn-preleveur" type="button">Imprimer l'horodatage</button>
-    </div>
-    <div id="statusHd" class="status"></div>
   </div>
 </div>
 </div>
 
 <!-- ============================= Préleveur et horodatage ============================= -->
 <div class="module-view" id="module-preleveur" hidden>
-  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-preleveur">
   <div class="card-header">Préleveur et horodatage</div>
   <div class="card-body">
-    <label for="preleveurPicker">Préleveur</label>
-    <div class="picker-row">
-      <select id="preleveurPicker"></select>
-      <button id="btnNouveauPreleveur" class="btn-preleveur" type="button">Nouveau…</button>
-      <button id="btnSupprimerPreleveur" class="secondary" type="button">Supprimer</button>
+    <label>Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="preleveurPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
     </div>
+
+    <div class="buttons">
+      <button id="btnImprimerPreleveur" class="btn-preleveur" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusPreleveur" class="status"></div>
 
     <div class="divider"></div>
 
@@ -493,30 +537,40 @@
       </div>
     </div>
     <div class="hint">Modifiables pour un prélèvement antérieur ou ultérieur.</div>
-
-    <div class="buttons">
+    <div class="buttons" style="margin-top:8px">
       <button id="btnMaintenant" class="secondary" type="button">Maintenant</button>
     </div>
 
-    <label style="margin-top:14px">Aperçu</label>
-    <div class="preview-wrap">
-      <canvas id="preleveurPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
-    </div>
+    <div class="divider"></div>
 
-    <div class="buttons">
-      <button id="btnImprimerPreleveur" class="btn-preleveur" type="button">Imprimer cette étiquette</button>
+    <label for="preleveurPicker">Préleveur</label>
+    <div class="picker-row">
+      <select id="preleveurPicker"></select>
+      <button id="btnNouveauPreleveur" class="btn-preleveur" type="button">Nouveau…</button>
+      <button id="btnSupprimerPreleveur" class="secondary" type="button">Supprimer</button>
     </div>
-    <div id="statusPreleveur" class="status"></div>
   </div>
 </div>
 </div>
 
-<!-- ============================= Étiquette de préparation ============================= -->
+<!-- ============================= Préparer les boîtes de prélèvement ============================= -->
 <div class="module-view" id="module-prep" hidden>
-  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-prep">
-  <div class="card-header">Étiquette de préparation (prélèvement à venir)</div>
+  <div class="card-header">Étiquette boîte de prélèvement (préparée à l'avance)</div>
   <div class="card-body">
+    <label>Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusPrep" class="status"></div>
+
+    <div class="divider"></div>
+
     <label for="prepNom">Nom *</label>
     <input type="text" id="prepNom" autocapitalize="characters">
 
@@ -547,26 +601,25 @@
 
     <label for="prepCommentaire">Commentaire</label>
     <input type="text" id="prepCommentaire" placeholder="ex : à congeler dans 30 min">
-
-    <label style="margin-top:14px">Aperçu</label>
-    <div class="preview-wrap">
-      <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
-    </div>
-
-    <div class="buttons">
-      <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
-      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
-    </div>
-    <div id="statusPrep" class="status"></div>
   </div>
 </div>
 </div>
 
-<!-- ============================= Étiquette nom seul ============================= -->
+<!-- ============================= Pilulier ============================= -->
 <div class="module-view" id="module-nomseul" hidden>
-  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
+
+<div class="card card-neutral">
+  <div class="card-body">
+    <label style="margin-top:0" for="pilLang">Langue des mots (jours et pictogrammes)</label>
+    <select id="pilLang">
+      <option value="fr">Français</option>
+      <option value="pt">Português (Portugal)</option>
+    </select>
+  </div>
+</div>
+
 <div class="card card-nomseul">
-  <div class="card-header">Étiquette nom seul</div>
+  <div class="card-header">Nom du patient (version courte)</div>
   <div class="card-body">
     <label for="nomseulPicker">Patient enregistré</label>
     <div class="picker-row">
@@ -576,6 +629,20 @@
       </div>
     </div>
 
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="nomseulPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <label for="nomseulCopies">Nombre d'étiquettes</label>
+    <input type="number" id="nomseulCopies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimerNomseul" class="btn-nomseul" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerNomseul" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusNomseul" class="status"></div>
+
     <div class="divider"></div>
 
     <label for="nomseulNom">Nom *</label>
@@ -583,32 +650,104 @@
 
     <label for="nomseulPrenom">Prénom *</label>
     <input type="text" id="nomseulPrenom" autocapitalize="words">
+    <div class="hint">ex : DUP. Jea. pour DUPONT Jean (nom en gras, prénom en normal)</div>
+  </div>
+</div>
 
-    <div class="toggles-row">
-      <span class="toggle-item"><input type="checkbox" id="nomseulVersionCourte">Version courte (anonymisée)</span>
+<div class="card card-nomseul">
+  <div class="card-header">Jours de la semaine</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">Touchez un jour pour imprimer son étiquette (en gras, la plus grande taille possible).</div>
+    <div class="jours-grid" id="joursGrid"></div>
+    <div class="buttons">
+      <button id="btnSemaineJours" class="btn-nomseul" type="button">Imprimer toute la semaine (7 étiquettes)</button>
     </div>
-    <div class="hint">ex : DUP. Jea. pour DUPONT Jean</div>
-
-    <label for="nomseulCopies">Nombre d'étiquettes</label>
-    <input type="number" id="nomseulCopies" value="1" min="1" max="30">
-
-    <label style="margin-top:14px">Aperçu</label>
+    <label style="margin-top:12px">Aperçu</label>
     <div class="preview-wrap">
-      <canvas id="nomseulPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+      <canvas id="joursPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+    <div id="statusJours" class="status"></div>
+  </div>
+</div>
+
+<div class="card card-nomseul">
+  <div class="card-header">Pictogrammes (matin, midi, soir…)</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">Touchez un ou plusieurs pictogrammes (4 au maximum) : ils composent l'étiquette, partagée en cases à découper (une par case du pilulier).</div>
+    <div class="picto-grid" id="pictoGrid"></div>
+
+    <div class="picto-content">
+      <span id="pictoContent">(aucun pictogramme)</span>
+    </div>
+    <div class="buttons" style="margin-top:6px">
+      <button id="btnPictoUndo" class="secondary" type="button">Retirer le dernier</button>
+      <button id="btnPictoClear" class="secondary" type="button">Vider</button>
+    </div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="pictoPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="toggles-row" style="margin-top:10px">
+      <span class="toggle-item"><input type="checkbox" id="pictoText" checked>Écrire le mot</span>
+      <span class="toggle-item"><input type="checkbox" id="pictoCut" checked>Traits de découpe</span>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="pictoRepeat">Répéter le motif ×</label>
+        <input type="number" id="pictoRepeat" value="3" min="1" max="4">
+      </div>
+      <div>
+        <label for="pictoCopies">Nombre d'étiquettes</label>
+        <input type="number" id="pictoCopies" value="1" min="1" max="30">
+      </div>
     </div>
 
     <div class="buttons">
-      <button id="btnImprimerNomseul" class="btn-nomseul" type="button">Imprimer cette étiquette</button>
-      <button id="btnEffacerNomseul" class="secondary" type="button">Effacer</button>
+      <button id="btnImprimerPicto" class="btn-nomseul" type="button">Imprimer cette étiquette</button>
+      <button id="btnSemainePicto" class="btn-nomseul" type="button">Semaine : matin + midi + soir</button>
     </div>
-    <div id="statusNomseul" class="status"></div>
+    <div id="statusPicto" class="status"></div>
   </div>
 </div>
+
+<div class="card card-nomseul">
+  <div class="card-header">Horaires (prises à heure précise)</div>
+  <div class="card-body">
+    <label for="horairesInput" style="margin-top:0">Horaires</label>
+    <input type="text" id="horairesInput" placeholder="ex : 7h 9h30 12h 14h30 16h 18h30 21h 23h" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <div class="hint">séparés par un espace ou une virgule ; écrits 07h00, 09h30…</div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="horairesPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+    <div id="horairesResume" class="hint"></div>
+
+    <div class="row2">
+      <div>
+        <label for="horairesPar">Cases par étiquette</label>
+        <input type="number" id="horairesPar" value="3" min="1" max="4">
+      </div>
+      <div>
+        <label for="horairesCases">Cases par horaire</label>
+        <input type="number" id="horairesCases" value="7" min="1" max="60">
+      </div>
+    </div>
+    <div class="hint">7 cases = une semaine</div>
+
+    <div class="buttons">
+      <button id="btnImprimerHoraires" class="btn-nomseul" type="button">Imprimer tous les horaires</button>
+    </div>
+    <div id="statusHoraires" class="status"></div>
+  </div>
+</div>
+
 </div>
 
 <!-- ============================= Étiquette texte libre ============================= -->
 <div class="module-view" id="module-libre" hidden>
-  <button class="btn-retour" type="button" data-back><span class="icon">‹</span> Retour aux catégories</button>
 <div class="card card-libre">
   <div class="card-header">Étiquette texte libre</div>
   <div class="card-body">
@@ -618,25 +757,56 @@
 
     <div class="buttons" style="margin-top:8px">
       <button id="btnLibreGras" class="secondary" type="button">Mettre la sélection en gras</button>
+      <button id="btnLibrePlus" class="secondary" type="button">Ligne plus grande</button>
+      <button id="btnLibreMoins" class="secondary" type="button">Ligne plus petite</button>
     </div>
     <div class="toggles-row">
       <span class="toggle-item"><input type="checkbox" id="libreToutGras">Tout en gras</span>
     </div>
-    <div class="hint">Sélectionnez du texte puis touchez le bouton, ou entourez-le de **deux astérisques**.</div>
+    <div class="hint">Sélectionnez du texte puis touchez un bouton, ou entourez-le de **deux astérisques** (gras). Les boutons « Ligne plus grande / plus petite » agissent sur la ligne du curseur (ils ajoutent &gt; ou &lt; au début).</div>
 
-    <label for="libreCopies">Nombre d'étiquettes</label>
-    <input type="number" id="libreCopies" value="1" min="1" max="30">
-
-    <label style="margin-top:14px">Aperçu</label>
+    <label style="margin-top:12px">Aperçu</label>
     <div class="preview-wrap">
       <canvas id="librePreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
     </div>
+
+    <label for="libreCopies">Nombre d'étiquettes</label>
+    <input type="number" id="libreCopies" value="1" min="1" max="30">
 
     <div class="buttons">
       <button id="btnImprimerLibre" class="btn-libre" type="button">Imprimer cette étiquette</button>
       <button id="btnEffacerLibre" class="secondary" type="button">Effacer</button>
     </div>
     <div id="statusLibre" class="status"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Mise en forme</div>
+    <div class="row2">
+      <div>
+        <label for="libreAlign" style="margin-top:0">Alignement</label>
+        <select id="libreAlign">
+          <option value="center">Centré</option>
+          <option value="left">À gauche</option>
+          <option value="right">À droite</option>
+        </select>
+      </div>
+      <div>
+        <label for="libreInterligne" style="margin-top:0">Interligne</label>
+        <select id="libreInterligne">
+          <option value="1">Serré</option>
+          <option value="3" selected>Normal</option>
+          <option value="9">Aéré</option>
+        </select>
+      </div>
+    </div>
+    <div class="toggles-row" style="margin-top:10px">
+      <span class="toggle-item"><input type="checkbox" id="libreWrap" checked>Retour à la ligne automatique</span>
+      <span class="toggle-item"><input type="checkbox" id="libreUpper">Tout en majuscules</span>
+      <span class="toggle-item"><input type="checkbox" id="libreAuto" checked>Taille automatique (la plus grande)</span>
+    </div>
+    <label for="libreSize">Taille (si non automatique)</label>
+    <input type="number" id="libreSize" value="30" min="10" max="70">
   </div>
 </div>
 </div>
@@ -671,6 +841,10 @@
   const BYTES_PER_ROW = PRINTHEAD_PX / 8;             // 12
   const LINE_GAP = 3;
   const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+
+  // Pictogrammes noir et blanc (listes d'opérations de dessin sur une grille 100x100,
+  // partagées avec l'application Mac), mots en français / portugais et noms des jours.
+  const PICTO_DATA = {"order":["sunrise","sun","moon","bed","sunset","cup","meal","water","pill","clock"],"icons":{"sunrise":{"fr":"MATIN","pt":"MANHÃ","nom":"Matin (soleil levant)","ops":[["l",23.2,52.5,9.3,44.5,7,1],["l",34.5,41.2,26.5,27.3,7,1],["l",50.0,37.0,50.0,21.0,7,1],["l",65.5,41.2,73.5,27.3,7,1],["l",76.8,52.5,90.7,44.5,7,1],["c",50,68,22,1],["b",0,68,100,40,0],["l",8,68,92,68,6,1],["l",26,82,74,82,6,1]]},"sun":{"fr":"MIDI","pt":"MEIO-DIA","nom":"Midi (soleil haut)","ops":[["c",50,50,19,1],["l",78.0,50.0,96.0,50.0,8,1],["l",69.8,30.2,82.5,17.5,8,1],["l",50.0,22.0,50.0,4.0,8,1],["l",30.2,30.2,17.5,17.5,8,1],["l",22.0,50.0,4.0,50.0,8,1],["l",30.2,69.8,17.5,82.5,8,1],["l",50.0,78.0,50.0,96.0,8,1],["l",69.8,69.8,82.5,82.5,8,1]]},"sunset":{"fr":"APRÈS-MIDI","pt":"TARDE","nom":"Après-midi (soleil couchant)","ops":[["l",23.2,42.5,11.0,35.5,7,1],["l",50.0,27.0,50.0,13.0,7,1],["l",76.8,42.5,89.0,35.5,7,1],["c",50,58,22,1],["b",0,58,100,50,0],["l",8,58,92,58,6,1],["l",14,72,46,72,6,1],["l",54,72,86,72,6,1],["l",28,86,72,86,6,1]]},"moon":{"fr":"SOIR","pt":"NOITE","nom":"Soir (lune)","ops":[["c",44,52,36,1],["c",64,40,31,0],["p",[78.0,13.0,80.8,21.2,89.0,24.0,80.8,26.8,78.0,35.0,75.2,26.8,67.0,24.0,75.2,21.2],1],["p",[85.0,50.0,87.0,56.0,93.0,58.0,87.0,60.0,85.0,66.0,83.0,60.0,77.0,58.0,83.0,56.0],1]]},"bed":{"fr":"COUCHER","pt":"DEITAR","nom":"Coucher (lit et Z)","ops":[["b",6,36,9,50,1],["b",6,62,88,12,1],["b",85,74,9,12,1],["b",6,74,9,12,1],["b",20,48,24,12,1],["b",46,50,48,10,1],["l",60,14,76,14,5,1],["l",76,14,60,30,5,1],["l",60,30,76,30,5,1],["l",82,4,92,4,4,1],["l",92,4,82,14,4,1],["l",82,14,92,14,4,1]]},"cup":{"fr":"PETIT-DÉJ.","pt":"PEQ. ALMOÇO","nom":"Petit-déjeuner (tasse)","ops":[["r",70,54,15,7],["p",[16,36,68,36,61,78,23,78],1],["l",28,10,28,26,5,1],["l",42,10,42,26,5,1],["l",56,10,56,26,5,1],["l",10,88,76,88,6,1]]},"meal":{"fr":"REPAS","pt":"REFEIÇÃO","nom":"Repas (assiette et couverts)","ops":[["r",52,50,25,7],["r",52,50,12,4],["l",12,44,12,84,6,1],["l",5,14,5,38,4,1],["l",12,14,12,38,4,1],["l",19,14,19,38,4,1],["l",5,38,19,38,4,1],["l",92,52,92,86,6,1],["p",[86,14,94,14,97,54,86,54],1]]},"water":{"fr":"EAU","pt":"ÁGUA","nom":"Verre d'eau","ops":[["l",24,14,31,86,7,1],["l",76,14,69,86,7,1],["l",31,86,69,86,7,1],["p",[27.5,44,72.5,44,69,84,31,84],1]]},"pill":{"fr":"MÉDICAMENT","pt":"REMÉDIO","nom":"Médicament (gélule)","ops":[["l",26,74,74,26,38,1],["l",26,74,74,26,23,0],["l",50,50,74,26,23,1]]},"clock":{"fr":"HEURE","pt":"HORA","nom":"Horaire (horloge)","ops":[["r",50,50,40,8],["l",50,50,50,22,7,1],["l",50,50,70,62,7,1],["c",50,50,6,1]]}},"days":{"fr":["LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI","DIMANCHE"],"pt":["SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO","DOMINGO"]}};
 
   // --- Constantes Bluetooth (protocole FICHERO D11s / AiYin) -------------
   const SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
@@ -779,8 +953,8 @@ function patientLabel(p) {
     toggles = toggles || {};
     const sections = [];
     const civiliteAffichee = { M: "M.", Mme: "Mme." }[f.civilite] || f.civilite;
-    const ligne1 = [civiliteAffichee, f.nom, f.prenom].filter(Boolean).join(" ");
-    if (ligne1) sections.push({ text: ligne1, weight: "bold" });
+    const ligne1 = nameMarkup(f.nom, f.prenom, civiliteAffichee);
+    if (ligne1) sections.push({ text: ligne1, weight: "name" });
 
     if (toggles.naissance !== false && (f.nomNaissance || f.ddn || f.sexe)) {
       let nePrefix = f.sexe === "F" ? "Née" : (f.sexe === "H" ? "Né" : "Né(e)");
@@ -808,7 +982,7 @@ function patientLabel(p) {
     // le numéro AM n'est qu'un repère secondaire, affiché petit en bas. Le RPPS n'est plus
     // imprimé (il prenait trop de place) — il reste cependant mémorisé pour ce préleveur.
     const sections = [];
-    if (nom) sections.push({ text: `Prélevé par ${nom}`, weight: "bold" });
+    if (nom) sections.push({ text: `Prélevé par ${preleveurMarkup(nom)}`, weight: "name" });
     const dtParts = [];
     if (dateTexte) dtParts.push(`le ${dateTexte}`);
     if (heureTexte) dtParts.push(`à ${heureTexte}`);
@@ -820,8 +994,8 @@ function patientLabel(p) {
 
   function buildPrepSections(nom, prenom, dateOrdo, prescripteur, dateRdv, tubesTexte, commentaire) {
     const sections = [];
-    const ligne1 = [nom, prenom].filter(Boolean).join(" ");
-    if (ligne1) sections.push({ text: ligne1, weight: "bold" });
+    const ligne1 = nameMarkup(nom, prenom);
+    if (ligne1) sections.push({ text: ligne1, weight: "name" });
     if (dateOrdo) sections.push({ text: `Ordo du ${dateOrdo}`, weight: "regular" });
     if (prescripteur) sections.push({ text: prescripteur, weight: "regular" });
     // Aussi mis en avant que le nom : c'est l'info la plus importante de cette étiquette.
@@ -832,37 +1006,33 @@ function patientLabel(p) {
     return sections;
   }
 
-  // Étiquette minimaliste : uniquement NOM Prénom, en gras, à la plus grande taille
-  // possible sur toute la largeur de l'étiquette (une seule section "bold"). La version
-  // courte anonymise l'identité en n'affichant que les 3 premières lettres du nom et du
-  // prénom, chacune suivie d'un point (ex. « DUP. Jea. » pour DUPONT Jean).
-  function buildNomseulSections(nom, prenom, versionCourte) {
-    let texte;
-    if (versionCourte) {
-      const abbrNom = nom ? `${nom.slice(0, 3)}.` : "";
-      const abbrPrenom = prenom ? `${prenom.slice(0, 3)}.` : "";
-      texte = [abbrNom, abbrPrenom].filter(Boolean).join(" ");
-    } else {
-      texte = [nom, prenom].filter(Boolean).join(" ");
-    }
-    if (!texte) return [{ text: "(étiquette vide)", weight: "regular" }];
-    return [{ text: texte, weight: "bold" }];
-  }
-
   // Étiquette « texte libre » : le texte peut être en gras en tout ou partie. Un passage
   // entouré de **deux astérisques** est en gras (l'état se poursuit d'une ligne à l'autre
-  // jusqu'à la fermeture) ; « Tout en gras » met la totalité en gras. Renvoie une liste de
-  // lignes, chacune étant une liste de mots { word, bold }. Les lignes vides sont ignorées.
-  function parseRichText(texte, toutGras) {
+  // jusqu'à la fermeture) ; « Tout en gras » met la totalité en gras. Une ligne peut commencer
+  // par > (plus grande), >> (beaucoup plus grande) ou < (plus petite). Renvoie une liste de
+  // lignes { words: [{ word, bold }], scale }. Les lignes vides sont ignorées.
+  const LIBRE_ECHELLES = { "<": 0.7, "": 1, ">": 1.35, ">>": 1.8 };
+
+  function parseRichText(texte, toutGras, majuscules) {
+    if (majuscules) texte = (texte || "").toUpperCase();
     const lines = [];
     let bold = false;
-    for (const raw of (texte || "").split("\n")) {
+    for (let raw of (texte || "").split("\n")) {
+      let marqueur = "";
+      const stripped = raw.replace(/^\s+/, "");
+      for (const m of [">>", ">", "<"]) {
+        if (stripped.startsWith(m)) {
+          marqueur = m;
+          raw = stripped.slice(m.length);
+          break;
+        }
+      }
       const words = [];
       raw.split("**").forEach((part, i) => {
         if (i > 0) bold = !bold;
         part.split(/\s+/).filter(Boolean).forEach((word) => words.push({ word, bold: bold || toutGras }));
       });
-      if (words.length) lines.push(words);
+      if (words.length) lines.push({ words, scale: LIBRE_ECHELLES[marqueur] });
     }
     return lines;
   }
@@ -990,6 +1160,68 @@ function patientLabel(p) {
     return finalLines;
   }
 
+  // Prénom : première lettre en majuscule, le reste en minuscules (aussi après un tiret),
+  // quelle que soit la façon dont il a été saisi.
+  function formatPrenom(prenom) {
+    return (prenom || "").split(/\s+/).filter(Boolean)
+      .map((w) => w.split("-").map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join("-"))
+      .join(" ");
+  }
+
+  // « [civilité] **NOM** Prénom » : le NOM (majuscules) est imprimé en gras, le prénom en
+  // caractères normaux (poids de section "name").
+  function nameMarkup(nom, prenom, civilite) {
+    const parts = [];
+    if (civilite) parts.push(civilite);
+    if ((nom || "").trim()) parts.push(`**${nom.trim().toUpperCase()}**`);
+    if ((prenom || "").trim()) parts.push(formatPrenom(prenom.trim()));
+    return parts.join(" ");
+  }
+
+  // « GRAVIER Antoine » (ou « gravier antoine ») -> « **GRAVIER** Antoine ». Les mots tout en
+  // majuscules sont le NOM ; à défaut, le premier mot est pris pour le NOM.
+  function preleveurMarkup(nomComplet) {
+    const mots = (nomComplet || "").split(/\s+/).filter(Boolean);
+    if (!mots.length) return "";
+    const estNom = mots.map((m) => m.length > 1 && m === m.toUpperCase() && m !== m.toLowerCase());
+    if (!estNom.some(Boolean)) estNom[0] = true;
+    const nom = mots.filter((_, i) => estNom[i]).map((m) => m.toUpperCase()).join(" ");
+    const prenom = mots.filter((_, i) => !estNom[i]).join(" ");
+    return nameMarkup(nom, prenom);
+  }
+
+  // Retour à la ligne d'un texte contenant des passages **en gras** : lignes de segments
+  // { text, font, bold, width }. Un mot n'est jamais coupé (l'appelant réduit la police si
+  // une ligne reste trop large).
+  function wrapMixed(ctx, text, fontBold, fontReg, maxWidth) {
+    const words = [];
+    let bold = false;
+    text.split("**").forEach((part, i) => {
+      if (i > 0) bold = !bold;
+      part.split(/\s+/).filter(Boolean).forEach((w) => words.push({ w, bold }));
+    });
+    const widthOf = (t, f) => { ctx.font = f; return ctx.measureText(t).width; };
+    const lines = [];
+    let current = [];
+    let width = 0;
+    for (const { w, bold: isBold } of words) {
+      const font = isBold ? fontBold : fontReg;
+      const wWord = widthOf(w, font);
+      const wSpace = widthOf(" ", fontReg);
+      let extra = wWord + (current.length ? wSpace : 0);
+      if (current.length && width + extra > maxWidth) {
+        lines.push(current);
+        current = [];
+        width = 0;
+        extra = wWord;
+      }
+      current.push({ text: current.length ? " " + w : w, font, bold: isBold });
+      width += extra;
+    }
+    if (current.length) lines.push(current);
+    return lines;
+  }
+
   // Met en page les sections pour exploiter toute la largeur disponible : les sections
   // "bold" (titre) et "small" (info secondaire) gardent chacune leur propre ligne, mais les
   // sections "regular" (naissance, adresse, email, NIR, etc.) s'enchaînent sur la même ligne
@@ -1015,6 +1247,11 @@ function patientLabel(p) {
         for (const line of wrapTokens(ctx, tokens, fonts.regular, maxWidth)) {
           lines.push({ text: line, font: fonts.regular, weight: "regular" });
         }
+      } else if (g.kind === "name") {
+        // NOM en gras + prénom en caractères normaux, à la même taille.
+        for (const segs of wrapMixed(ctx, g.payload, fonts.bold, fonts.nameReg, maxWidth)) {
+          lines.push({ text: segs.map((x) => x.text).join(""), font: fonts.bold, weight: "name", segs });
+        }
       } else {
         const font = fonts[g.kind];
         for (const line of wrapText(ctx, g.payload, font, maxWidth)) {
@@ -1028,7 +1265,7 @@ function patientLabel(p) {
   // Construit le canevas "à plat" (400 x 96, dans le sens de lecture normal), avec la
   // plus grande police qui tient sur les 96px de hauteur disponible, en empilant les
   // lignes selon leur encre réelle (pas une hauteur de police approximative).
-  function composeSectionsCanvas(rawSections) {
+  function composeSectionsCanvas(rawSections, oneLinePerSection = false) {
     const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
     const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
 
@@ -1042,17 +1279,35 @@ function patientLabel(p) {
         bold: `bold ${size}px ${FONT_FAMILY}`,
         regular: `${regSize}px ${FONT_FAMILY}`,
         small: `${smallSize}px ${FONT_FAMILY}`,
+        nameReg: `${size}px ${FONT_FAMILY}`,
       };
       const packed = packSectionsIntoLines(mctx, rawSections, fonts, maxTextWidth);
-      const lines = packed.map((l) => ({ ...l, ...measureLineInk(mctx, l.text, l.font) }));
+      let overflow = false;
+      const lines = packed.map((l) => {
+        if (!l.segs) return { ...l, ...measureLineInk(mctx, l.text, l.font) };
+        let ascent = 0, descent = 0, width = 0;
+        for (const seg of l.segs) {
+          const ink = measureLineInk(mctx, seg.text, seg.font);
+          ascent = Math.max(ascent, ink.ascent);
+          descent = Math.max(descent, ink.descent);
+          width += ink.width;
+        }
+        if (width > maxTextWidth) overflow = true;
+        return { ...l, ascent, descent, width };
+      });
       const totalH = lines.reduce((sum, l) => sum + l.ascent + l.descent, 0)
         + LINE_GAP * Math.max(lines.length - 1, 0);
-      return { lines, totalH };
+      return { lines, totalH, overflow };
     }
 
+    // Avec oneLinePerSection, chaque information doit tenir sur UNE seule ligne : on réduit la
+    // police plutôt que de revenir à la ligne (ex. « Prélevé par NOM Prénom »).
+    const expectedLines = rawSections.filter((sec) => sec.text.trim()).length;
     let chosen = null;
     for (let size = 60; size >= 8; size--) {
       const layout = layoutAtSize(size);
+      if (oneLinePerSection && layout.lines.length > expectedLines) continue;
+      if (layout.overflow) continue;
       if (layout.totalH <= maxStackHeight) {
         chosen = layout;
         break;
@@ -1073,18 +1328,29 @@ function patientLabel(p) {
     for (const line of chosen.lines) {
       ctx.font = line.font;
       const baselineY = cursor + line.ascent;
-      const x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
-      ctx.fillText(line.text, x, baselineY);
-      if (line.weight === "bold") ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
+      let x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      if (line.segs) {
+        for (const seg of line.segs) {
+          ctx.font = seg.font;
+          ctx.fillText(seg.text, x, baselineY);
+          if (seg.bold) ctx.fillText(seg.text, x + 1, baselineY); // léger renfort du gras
+          x += ctx.measureText(seg.text).width;
+        }
+      } else {
+        ctx.fillText(line.text, x, baselineY);
+        if (line.weight === "bold") ctx.fillText(line.text, x + 1, baselineY); // léger renfort du gras
+      }
       cursor += line.ascent + line.descent + LINE_GAP;
     }
     return landscape;
   }
 
   // Comme composeSectionsCanvas, mais chaque ligne est une suite de mots pouvant être
-  // individuellement en gras ou non : un même corps de texte (le plus grand qui tient) est
-  // utilisé partout, seule la graisse change d'un mot à l'autre.
-  function composeRichCanvas(lines) {
+  // individuellement en gras ou non, avec une échelle de taille. Options : alignement
+  // ("left", "center", "right"), interligne, retour à la ligne automatique, taille imposée
+  // (sinon la plus grande qui tient).
+  function composeRichCanvas(lines, opts) {
+    const { align = "center", fixedSize = null, lineGap = LINE_GAP, wrap = true } = opts || {};
     const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
     const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
     const mctx = document.createElement("canvas").getContext("2d");
@@ -1105,15 +1371,16 @@ function patientLabel(p) {
       return pieces;
     }
 
-    // En mode strict, renvoie null si un mot est trop large pour l'étiquette à cette taille :
-    // on préfère alors une police plus petite plutôt que de couper le mot en deux.
+    // En mode strict, renvoie null si un mot est trop large pour l'étiquette (ou, sans retour
+    // à la ligne automatique, si une ligne déborde) : on préfère alors une police plus petite.
     function layoutAtSize(size, strict = true) {
-      const fontReg = `${size}px ${FONT_FAMILY}`;
-      const fontBold = `bold ${size}px ${FONT_FAMILY}`;
-      mctx.font = fontReg;
-      const space = mctx.measureText(" ").width;
       const out = [];
-      for (const words of lines) {
+      for (const { words, scale } of lines) {
+        const lineSize = Math.max(8, Math.round(size * scale));
+        const fontReg = `${lineSize}px ${FONT_FAMILY}`;
+        const fontBold = `bold ${lineSize}px ${FONT_FAMILY}`;
+        mctx.font = fontReg;
+        const space = mctx.measureText(" ").width;
         let cur = [];
         let curW = 0;
         for (const { word, bold } of words) {
@@ -1122,19 +1389,25 @@ function patientLabel(p) {
             mctx.font = font;
             if (mctx.measureText(word).width > maxTextWidth) return null;
           }
-          splitToFit(word, font).forEach((piece, n) => {
+          const pieces = splitToFit(word, font);
+          for (let n = 0; n < pieces.length; n++) {
+            const piece = pieces[n];
             mctx.font = font;
             const w = mctx.measureText(piece).width;
             let gap = (!cur.length || n > 0) ? 0 : space;
             if (cur.length && curW + gap + w > maxTextWidth) {
-              out.push({ items: cur, width: curW });
-              cur = [];
-              curW = 0;
-              gap = 0;
+              if (wrap) {
+                out.push({ items: cur, width: curW });
+                cur = [];
+                curW = 0;
+                gap = 0;
+              } else if (strict) {
+                return null;
+              }
             }
             cur.push({ text: piece, font, bold, x: curW + gap });
             curW += gap + w;
-          });
+          }
         }
         if (cur.length) out.push({ items: cur, width: curW });
       }
@@ -1150,19 +1423,23 @@ function patientLabel(p) {
         line.descent = descent;
       }
       const totalH = out.reduce((sum, l) => sum + l.ascent + l.descent, 0)
-        + LINE_GAP * Math.max(out.length - 1, 0);
+        + lineGap * Math.max(out.length - 1, 0);
       return { lines: out, totalH };
     }
 
     let chosen = null;
-    for (let size = 60; size >= 8; size--) {
-      const layout = layoutAtSize(size);
-      if (layout && layout.totalH <= maxStackHeight) {
-        chosen = layout;
-        break;
+    if (fixedSize) {
+      chosen = layoutAtSize(Math.round(fixedSize), false);
+    } else {
+      for (let size = 60; size >= 8; size--) {
+        const layout = layoutAtSize(size);
+        if (layout && layout.totalH <= maxStackHeight) {
+          chosen = layout;
+          break;
+        }
       }
+      if (!chosen) chosen = layoutAtSize(8, false);
     }
-    if (!chosen) chosen = layoutAtSize(8, false);
 
     const landscape = document.createElement("canvas");
     landscape.width = MAX_ROWS;
@@ -1176,15 +1453,182 @@ function patientLabel(p) {
     let cursor = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
     for (const line of chosen.lines) {
       const baselineY = cursor + line.ascent;
-      const x0 = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      let x0;
+      if (align === "left") x0 = MARGIN_PX + 2;
+      else if (align === "right") x0 = Math.max(MARGIN_PX, MAX_ROWS - 32 - line.width - 2);
+      else x0 = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
       for (const it of line.items) {
         ctx.font = it.font;
         ctx.fillText(it.text, x0 + it.x, baselineY);
         if (it.bold) ctx.fillText(it.text, x0 + it.x + 1, baselineY); // léger renfort du gras
       }
-      cursor += line.ascent + line.descent + LINE_GAP;
+      cursor += line.ascent + line.descent + lineGap;
     }
     return landscape;
+  }
+
+  // Étiquette « texte libre » complète (utilisée aussi pour les jours de la semaine).
+  function composeLibreCanvas(texte, toutGras, opts) {
+    const lines = parseRichText(texte, toutGras, opts && opts.upper);
+    if (!lines.length) return composeSectionsCanvas([{ text: "(étiquette vide)", weight: "regular" }]);
+    return composeRichCanvas(lines, opts);
+  }
+
+  // Nom court anonymisé pour un pilulier (ex. « DUP. Jea. ») : le NOM en gras, le prénom en
+  // caractères normaux, sur une seule ligne, à la plus grande taille possible.
+  function composePilulierNomCanvas(nom, prenom) {
+    const words = [];
+    if (nom) words.push({ word: `${nom.toUpperCase().slice(0, 3)}.`, bold: true });
+    if (prenom) words.push({ word: `${formatPrenom(prenom).slice(0, 3)}.`, bold: false });
+    if (!words.length) return composeSectionsCanvas([{ text: "(étiquette vide)", weight: "regular" }]);
+    return composeRichCanvas([{ words, scale: 1 }]);
+  }
+
+  // --- Pictogrammes noir et blanc (même dessin que l'application Mac) -----------------------
+
+  function drawPictoIcon(ctx, name, x, y, size) {
+    const k = size / 100;
+    const col = (c) => (c ? "#000" : "#fff");
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.rect(0, 0, size, size);
+    ctx.clip();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const op of PICTO_DATA.icons[name].ops) {
+      const t = op[0];
+      if (t === "c") {
+        ctx.fillStyle = col(op[4]);
+        ctx.beginPath();
+        ctx.arc(op[1] * k, op[2] * k, op[3] * k, 0, 2 * Math.PI);
+        ctx.fill();
+      } else if (t === "r") {
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = op[4] * k;
+        ctx.beginPath();
+        ctx.arc(op[1] * k, op[2] * k, (op[3] - op[4] / 2) * k, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (t === "l") {
+        ctx.strokeStyle = col(op[6]);
+        ctx.lineWidth = op[5] * k;
+        ctx.beginPath();
+        ctx.moveTo(op[1] * k, op[2] * k);
+        ctx.lineTo(op[3] * k, op[4] * k);
+        ctx.stroke();
+      } else if (t === "p") {
+        const p = op[1];
+        ctx.fillStyle = col(op[2]);
+        ctx.beginPath();
+        ctx.moveTo(p[0] * k, p[1] * k);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i] * k, p[i + 1] * k);
+        ctx.closePath();
+        ctx.fill();
+      } else if (t === "b") {
+        ctx.fillStyle = col(op[5]);
+        ctx.fillRect(op[1] * k, op[2] * k, op[3] * k, op[4] * k);
+      }
+    }
+    ctx.restore();
+  }
+
+  // Plus grande police (en gras par défaut) dont le texte tient dans maxW x maxH.
+  function fitText(ctx, text, maxW, maxH, bold = true, maxSize = 60) {
+    for (let size = maxSize; size >= 8; size--) {
+      const font = `${bold ? "bold " : ""}${size}px ${FONT_FAMILY}`;
+      const ink = measureLineInk(ctx, text, font);
+      if (ink.width <= maxW && ink.ascent + ink.descent <= maxH) return { font, ink };
+    }
+    const font = `${bold ? "bold " : ""}8px ${FONT_FAMILY}`;
+    return { font, ink: measureLineInk(ctx, text, font) };
+  }
+
+  const PICTO_AREA_X = 2;
+  const PICTO_AREA_W = MAX_ROWS - 32; // le bord droit de l'étiquette est tronqué (voir HORIZONTAL_SHIFT_PX)
+
+  // Étiquette de pictogrammes : cells = [{ icon, text }]. L'étiquette est partagée en autant de
+  // cases égales, séparées par un trait de découpe pointillé, pour pouvoir les découper et en
+  // coller une par case du pilulier.
+  function composePictoCanvas(cells, cutLines) {
+    const n = Math.max(cells.length, 1);
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+    const bounds = [];
+    for (let i = 0; i <= n; i++) bounds.push(PICTO_AREA_X + Math.round(i * PICTO_AREA_W / n));
+    const pad = 4;
+    const H = PRINTHEAD_PX;
+    const innerH = H - 2 * pad;
+
+    function drawText(text, font, ink, left, regionW, top) {
+      ctx.font = font;
+      ctx.fillStyle = "#000";
+      ctx.fillText(text, Math.round(left + (regionW - ink.width) / 2), Math.round(top + ink.ascent));
+    }
+
+    cells.forEach(({ icon, text }, i) => {
+      const x0 = bounds[i];
+      const w = bounds[i + 1] - bounds[i];
+      const innerW = w - 2 * pad;
+      if (icon && text) {
+        if (w >= 220) { // case large : pictogramme à gauche, mot à droite
+          const sIcon = innerH;
+          drawPictoIcon(ctx, icon, x0 + pad, pad, sIcon);
+          const regionW = innerW - sIcon - pad;
+          const { font, ink } = fitText(ctx, text, regionW, innerH);
+          drawText(text, font, ink, x0 + pad + sIcon + pad, regionW, pad + (innerH - (ink.ascent + ink.descent)) / 2);
+        } else { // case étroite : pictogramme en haut, mot dessous
+          const { font, ink } = fitText(ctx, text, innerW, Math.min(20, Math.floor(innerH / 4)));
+          const th = ink.ascent + ink.descent;
+          const sIcon = Math.max(innerH - th - 4, 16);
+          drawPictoIcon(ctx, icon, x0 + Math.round((w - sIcon) / 2), pad, sIcon);
+          drawText(text, font, ink, x0, w, H - pad - th);
+        }
+      } else if (icon) {
+        const sIcon = Math.min(innerH, innerW);
+        drawPictoIcon(ctx, icon, x0 + Math.round((w - sIcon) / 2), pad + Math.round((innerH - sIcon) / 2), sIcon);
+      } else if (text) {
+        const { font, ink } = fitText(ctx, text, innerW, innerH);
+        drawText(text, font, ink, x0, w, pad + (innerH - (ink.ascent + ink.descent)) / 2);
+      }
+    });
+    if (cutLines) {
+      ctx.fillStyle = "#000";
+      for (let i = 1; i < n; i++) {
+        for (let y = 2; y < H - 2; y += 8) ctx.fillRect(bounds[i], y, 1, 3);
+      }
+    }
+    return landscape;
+  }
+
+  // --- Horaires : « 8 », « 8h », « 8:30 », « 8h5 » -> « 08h00 », « 08h00 », « 08h30 », « 08h05 » --
+
+  function normaliserHoraire(token) {
+    const m = /^(\d{1,2})\s*(?:[hH:.]\s*(\d{1,2})?)?$/.exec(token.trim());
+    if (!m) return token.trim().toUpperCase();
+    const heures = parseInt(m[1], 10);
+    const minutes = m[2] ? parseInt(m[2], 10) : 0;
+    if (heures > 23 || minutes > 59) return token.trim().toUpperCase();
+    return String(heures).padStart(2, "0") + "h" + String(minutes).padStart(2, "0");
+  }
+
+  function parseHoraires(texte) {
+    const vus = new Set();
+    const resultat = [];
+    for (const tok of (texte || "").split(/[,;\n\s]+/)) {
+      if (!tok) continue;
+      const h = normaliserHoraire(tok);
+      if (!vus.has(h)) {
+        vus.add(h);
+        resultat.push(h);
+      }
+    }
+    return resultat;
   }
 
   // Convertit le canevas "à plat" (Wc x 96) en raster 1-bit pivoté pour la tête
@@ -1398,88 +1842,8 @@ function patientLabel(p) {
   // --- Interface -----------------------------------------------------------
 
   const $ = (id) => document.getElementById(id);
-  const els = {
-    // patient
-    patientPicker: $("patientPicker"),
-    btnSupprimerPatient: $("btnSupprimerPatient"),
-    hdPreleveur: $("hdPreleveur"),
-    hdDate: $("hdDate"),
-    hdHeure: $("hdHeure"),
-    btnHdMaintenant: $("btnHdMaintenant"),
-    btnImprimerHd: $("btnImprimerHd"),
-    statusHd: $("statusHd"),
-    btnImporterPatients: $("btnImporterPatients"),
-    importPatientsFile: $("importPatientsFile"),
-    civilite: $("civilite"),
-    nom: $("nom"),
-    prenom: $("prenom"),
-    nomNaissance: $("nomNaissance"),
-    ddn: $("ddn"),
-    sexe: $("sexe"),
-    adresse: $("adresse"),
-    codepostal: $("codepostal"),
-    commune: $("commune"),
-    telephone: $("telephone"),
-    email: $("email"),
-    nir: $("nir"),
-    showNaissance: $("showNaissance"),
-    showAdresse: $("showAdresse"),
-    showEmail: $("showEmail"),
-    showNir: $("showNir"),
-    copies: $("copies"),
-    previewCanvas: $("previewCanvas"),
-    statusPatient: $("statusPatient"),
-    btnEffacer: $("btnEffacer"),
-    btnImprimer: $("btnImprimer"),
-    btnEnregistrer: $("btnEnregistrer"),
-    // préleveur
-    preleveurPicker: $("preleveurPicker"),
-    btnNouveauPreleveur: $("btnNouveauPreleveur"),
-    btnSupprimerPreleveur: $("btnSupprimerPreleveur"),
-    preleveurDate: $("preleveurDate"),
-    preleveurHeure: $("preleveurHeure"),
-    btnMaintenant: $("btnMaintenant"),
-    preleveurPreviewCanvas: $("preleveurPreviewCanvas"),
-    statusPreleveur: $("statusPreleveur"),
-    btnImprimerPreleveur: $("btnImprimerPreleveur"),
-    // préparation
-    prepNom: $("prepNom"),
-    prepPrenom: $("prepPrenom"),
-    prepDateOrdo: $("prepDateOrdo"),
-    btnPrepAujourdhui: $("btnPrepAujourdhui"),
-    prepPrescripteur: $("prepPrescripteur"),
-    prepDateRdv: $("prepDateRdv"),
-    tubesContainer: $("tubesContainer"),
-    prepAutresTubes: $("prepAutresTubes"),
-    prepCommentaire: $("prepCommentaire"),
-    prepPreviewCanvas: $("prepPreviewCanvas"),
-    statusPrep: $("statusPrep"),
-    btnImprimerPrep: $("btnImprimerPrep"),
-    btnEffacerPrep: $("btnEffacerPrep"),
-    // nom seul
-    nomseulPicker: $("nomseulPicker"),
-    nomseulNom: $("nomseulNom"),
-    nomseulPrenom: $("nomseulPrenom"),
-    nomseulVersionCourte: $("nomseulVersionCourte"),
-    nomseulCopies: $("nomseulCopies"),
-    nomseulPreviewCanvas: $("nomseulPreviewCanvas"),
-    statusNomseul: $("statusNomseul"),
-    btnImprimerNomseul: $("btnImprimerNomseul"),
-    btnEffacerNomseul: $("btnEffacerNomseul"),
-    // texte libre
-    libreTexte: $("libreTexte"),
-    libreCopies: $("libreCopies"),
-    btnLibreGras: $("btnLibreGras"),
-    libreToutGras: $("libreToutGras"),
-    librePreviewCanvas: $("librePreviewCanvas"),
-    statusLibre: $("statusLibre"),
-    btnImprimerLibre: $("btnImprimerLibre"),
-    btnEffacerLibre: $("btnEffacerLibre"),
-    // global
-    btnConnecter: $("btnConnecter"),
-    printerInfo: $("printerInfo"),
-    moduleHome: $("moduleHome"),
-  };
+  const els = {};
+  document.querySelectorAll("[id]").forEach((el) => { els[el.id] = el; });
 
   // ===================== Navigation par module (écran d'accueil à tuiles) =====================
   // Plutôt qu'une longue page à faire défiler jusqu'à la bonne carte, l'accueil propose des
@@ -1496,6 +1860,8 @@ function patientLabel(p) {
   function showModule(name) {
     if ((name === "patient" || name === "preleveur") && !hdManual) setPreleveurNow();
     els.moduleHome.hidden = true;
+    els.homeHeader.hidden = true;
+    els.btnRetour.hidden = false;
     for (const key of Object.keys(moduleViews)) {
       moduleViews[key].hidden = key !== name;
     }
@@ -1505,6 +1871,8 @@ function patientLabel(p) {
   function showHome() {
     for (const view of Object.values(moduleViews)) view.hidden = true;
     els.moduleHome.hidden = false;
+    els.homeHeader.hidden = false;
+    els.btnRetour.hidden = true;
     window.scrollTo(0, 0);
   }
 
@@ -1650,11 +2018,10 @@ function patientLabel(p) {
   }
 
   function currentFields() {
-    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
     return {
       civilite: els.civilite.value.trim(),
       nom: els.nom.value.trim().toUpperCase(),
-      prenom: capitalize(els.prenom.value.trim()),
+      prenom: formatPrenom(els.prenom.value.trim()),
       nomNaissance: els.nomNaissance.value.trim().toUpperCase(),
       ddn: els.ddn.value.trim(),
       sexe: els.sexe.value.trim(),
@@ -1842,7 +2209,7 @@ function patientLabel(p) {
     const { nom, am, rpps } = selectedPreleveur();
     const dateTexte = els.preleveurDate.value.trim();
     const heureTexte = els.preleveurHeure.value.trim();
-    const landscape = composeSectionsCanvas(buildPreleveurSections(nom, am, rpps, dateTexte, heureTexte));
+    const landscape = composeSectionsCanvas(buildPreleveurSections(nom, am, rpps, dateTexte, heureTexte), true);
     const target = els.preleveurPreviewCanvas;
     target.width = landscape.width;
     target.height = landscape.height;
@@ -1979,7 +2346,6 @@ function patientLabel(p) {
   }
 
   function prepFields() {
-    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
     const quantities = {};
     for (const color of TUBE_COLORS) {
       const v = parseInt(tubeInputs[color].value, 10);
@@ -1987,7 +2353,7 @@ function patientLabel(p) {
     }
     return {
       nom: els.prepNom.value.trim().toUpperCase(),
-      prenom: capitalize(els.prepPrenom.value.trim()),
+      prenom: formatPrenom(els.prepPrenom.value.trim()),
       dateOrdo: els.prepDateOrdo.value.trim(),
       prescripteur: els.prepPrescripteur.value.trim(),
       dateRdv: els.prepDateRdv.value.trim(),
@@ -2052,21 +2418,9 @@ function patientLabel(p) {
     }
   });
 
-  // ===================== Étiquette nom seul =====================
+  // ===================== Pilulier =====================
 
-  function currentNomseulFields() {
-    const capitalize = (s) => s.split(" ").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
-    return {
-      nom: els.nomseulNom.value.trim().toUpperCase(),
-      prenom: capitalize(els.nomseulPrenom.value.trim()),
-      versionCourte: els.nomseulVersionCourte.checked,
-    };
-  }
-
-  function updateNomseulPreview() {
-    const f = currentNomseulFields();
-    const landscape = composeSectionsCanvas(buildNomseulSections(f.nom, f.prenom, f.versionCourte));
-    const target = els.nomseulPreviewCanvas;
+  function paintPreview(target, landscape) {
     target.width = landscape.width;
     target.height = landscape.height;
     const ctx = target.getContext("2d");
@@ -2075,10 +2429,39 @@ function patientLabel(p) {
     return landscape;
   }
 
+  // Imprime une suite d'étiquettes ({ canvas, copies }) dans l'ordre, via la file d'attente.
+  async function printSequence(statusEl, jobs, doneText) {
+    try {
+      for (const job of jobs) await printQueued(statusEl, job.canvas, job.copies);
+      setStatus(statusEl, doneText, "ok");
+    } catch (e) {
+      setStatus(statusEl, `Erreur :\n${e.message || e}`, "err");
+    }
+  }
+
+  function clampInt(value, min, max, fallback) {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  // --- Nom du patient (version courte) : NOM en gras, prénom normal ---
+
+  function currentNomseulFields() {
+    return {
+      nom: els.nomseulNom.value.trim().toUpperCase(),
+      prenom: formatPrenom(els.nomseulPrenom.value.trim()),
+    };
+  }
+
+  function updateNomseulPreview() {
+    const f = currentNomseulFields();
+    return paintPreview(els.nomseulPreviewCanvas, composePilulierNomCanvas(f.nom, f.prenom));
+  }
+
   ["input", "change"].forEach((evt) => {
     [els.nomseulNom, els.nomseulPrenom].forEach((el) => el.addEventListener(evt, updateNomseulPreview));
   });
-  els.nomseulVersionCourte.addEventListener("change", updateNomseulPreview);
 
   els.nomseulPicker.addEventListener("change", () => {
     const label = els.nomseulPicker.value;
@@ -2092,7 +2475,6 @@ function patientLabel(p) {
   els.btnEffacerNomseul.addEventListener("click", () => {
     els.nomseulNom.value = "";
     els.nomseulPrenom.value = "";
-    els.nomseulVersionCourte.checked = false;
     els.nomseulCopies.value = 1;
     els.nomseulPicker.value = "";
     updateNomseulPreview();
@@ -2105,38 +2487,209 @@ function patientLabel(p) {
       setStatus(els.statusNomseul, "Merci de renseigner au moins le nom et le prénom.", "err");
       return;
     }
-    let copies = parseInt(els.nomseulCopies.value, 10);
-    if (!Number.isFinite(copies)) copies = 1;
-    copies = Math.max(1, Math.min(30, copies));
+    const copies = clampInt(els.nomseulCopies.value, 1, 30, 1);
+    await printSequence(els.statusNomseul, [{ canvas: updateNomseulPreview(), copies }],
+      `${copies} étiquette(s) imprimée(s).`);
+  });
 
-    const landscape = updateNomseulPreview();
+  // --- Langue, jours de la semaine ---
 
-    try {
-      await printQueued(els.statusNomseul, landscape, copies);
-      setStatus(els.statusNomseul, `${copies} étiquette(s) imprimée(s).`, "ok");
-    } catch (e) {
-      setStatus(els.statusNomseul, `Erreur :\n${e.message || e}`, "err");
+  let jourSelected = 0;
+
+  function pilLang() {
+    return els.pilLang.value === "pt" ? "pt" : "fr";
+  }
+
+  function capitaliserJour(jour) {
+    return jour.charAt(0) + jour.slice(1).toLowerCase();
+  }
+
+  function joursCanvas(index) {
+    return composeLibreCanvas(PICTO_DATA.days[pilLang()][index], true, {});
+  }
+
+  function updateJoursPreview() {
+    return paintPreview(els.joursPreviewCanvas, joursCanvas(jourSelected));
+  }
+
+  function buildJoursButtons() {
+    els.joursGrid.innerHTML = "";
+    PICTO_DATA.days[pilLang()].forEach((jour, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-nomseul";
+      btn.textContent = capitaliserJour(jour);
+      btn.addEventListener("click", async () => {
+        jourSelected = i;
+        const canvas = updateJoursPreview();
+        await printSequence(els.statusJours, [{ canvas, copies: 1 }], `« ${jour} » imprimé.`);
+      });
+      els.joursGrid.appendChild(btn);
+    });
+  }
+
+  els.btnSemaineJours.addEventListener("click", async () => {
+    const jours = PICTO_DATA.days[pilLang()];
+    await printSequence(els.statusJours,
+      jours.map((_, i) => ({ canvas: joursCanvas(i), copies: 1 })),
+      "Les 7 jours sont imprimés (du lundi au dimanche).");
+  });
+
+  // --- Pictogrammes ---
+
+  let pictoContent = [];
+
+  function pictoCells(names, repeat) {
+    const lang = pilLang();
+    const withText = els.pictoText.checked;
+    const seq = names.map((n) => ({ icon: n, text: withText ? PICTO_DATA.icons[n][lang] : "" }));
+    const cells = [];
+    for (let i = 0; i < clampInt(repeat, 1, 4, 1); i++) cells.push(...seq);
+    return cells.slice(0, 6);
+  }
+
+  function pictoCanvas(names, repeat) {
+    const cells = pictoCells(names, repeat);
+    if (!cells.length) return composeSectionsCanvas([{ text: "(choisissez un pictogramme)", weight: "regular" }]);
+    return composePictoCanvas(cells, els.pictoCut.checked);
+  }
+
+  function updatePictoContent() {
+    els.pictoContent.textContent = pictoContent.length
+      ? pictoContent.map((n) => PICTO_DATA.icons[n].nom.split(" (")[0]).join(" + ")
+      : "(aucun pictogramme)";
+  }
+
+  function updatePictoPreview() {
+    return paintPreview(els.pictoPreviewCanvas, pictoCanvas(pictoContent, els.pictoRepeat.value));
+  }
+
+  function buildPictoTiles() {
+    els.pictoGrid.innerHTML = "";
+    for (const name of PICTO_DATA.order) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "picto-tile";
+      const cv = document.createElement("canvas");
+      cv.width = 96;
+      cv.height = 96;
+      const cctx = cv.getContext("2d");
+      cctx.fillStyle = "#fff";
+      cctx.fillRect(0, 0, 96, 96);
+      drawPictoIcon(cctx, name, 0, 0, 96);
+      const label = document.createElement("span");
+      label.textContent = PICTO_DATA.icons[name].fr.charAt(0) + PICTO_DATA.icons[name].fr.slice(1).toLowerCase();
+      btn.appendChild(cv);
+      btn.appendChild(label);
+      btn.addEventListener("click", () => {
+        if (pictoContent.length < 4) pictoContent.push(name);
+        updatePictoContent();
+        updatePictoPreview();
+      });
+      els.pictoGrid.appendChild(btn);
     }
+  }
+
+  els.btnPictoUndo.addEventListener("click", () => {
+    pictoContent.pop();
+    updatePictoContent();
+    updatePictoPreview();
+  });
+  els.btnPictoClear.addEventListener("click", () => {
+    pictoContent = [];
+    updatePictoContent();
+    updatePictoPreview();
+  });
+  [els.pictoText, els.pictoCut].forEach((el) => el.addEventListener("change", updatePictoPreview));
+  els.pictoRepeat.addEventListener("input", updatePictoPreview);
+
+  els.btnImprimerPicto.addEventListener("click", async () => {
+    if (!pictoContent.length) {
+      setStatus(els.statusPicto, "Touchez d'abord au moins un pictogramme.", "err");
+      return;
+    }
+    const copies = clampInt(els.pictoCopies.value, 1, 30, 1);
+    await printSequence(els.statusPicto, [{ canvas: updatePictoPreview(), copies }],
+      `${copies} étiquette(s) imprimée(s).`);
+  });
+
+  // Matin, midi et soir pour une semaine : 7 cases de chaque, donc ceil(7 / motifs par étiquette)
+  // étiquettes de chaque moment (un moment à la fois, pour les découper et les trier facilement).
+  els.btnSemainePicto.addEventListener("click", async () => {
+    const repeat = clampInt(els.pictoRepeat.value, 1, 4, 3);
+    const copies = Math.ceil(7 / repeat);
+    await printSequence(els.statusPicto,
+      ["sunrise", "sun", "moon"].map((name) => ({ canvas: pictoCanvas([name], repeat), copies })),
+      `Matin, midi et soir imprimés : ${copies} étiquettes de chaque (${copies * repeat} cases).`);
+  });
+
+  // Les mots des pictogrammes et des jours suivent la langue choisie.
+  els.pilLang.addEventListener("change", () => {
+    buildJoursButtons();
+    updateJoursPreview();
+    updatePictoPreview();
+  });
+
+  // --- Horaires (prises à heure précise) ---
+
+  function horairesParams() {
+    const horaires = parseHoraires(els.horairesInput.value);
+    const par = clampInt(els.horairesPar.value, 1, 4, 3);
+    const cases = clampInt(els.horairesCases.value, 1, 60, 7);
+    return { horaires, par, etiquettes: Math.ceil(cases / par) };
+  }
+
+  function horairesCanvas(horaire, par) {
+    return composePictoCanvas(Array.from({ length: par }, () => ({ icon: "", text: horaire })), true);
+  }
+
+  function updateHorairesPreview() {
+    const { horaires, par, etiquettes } = horairesParams();
+    if (!horaires.length) {
+      els.horairesResume.textContent = "";
+      return paintPreview(els.horairesPreviewCanvas,
+        composeSectionsCanvas([{ text: "(saisissez les horaires)", weight: "regular" }]));
+    }
+    els.horairesResume.textContent =
+      `${horaires.length} horaire(s) : ${horaires.join(" · ")} → ${etiquettes} étiquette(s) de ${par} case(s) `
+      + `pour chacun, soit ${horaires.length * etiquettes} étiquettes.`;
+    return paintPreview(els.horairesPreviewCanvas, horairesCanvas(horaires[0], par));
+  }
+
+  [els.horairesInput, els.horairesPar, els.horairesCases].forEach((el) => el.addEventListener("input", updateHorairesPreview));
+
+  els.btnImprimerHoraires.addEventListener("click", async () => {
+    const { horaires, par, etiquettes } = horairesParams();
+    if (!horaires.length) {
+      setStatus(els.statusHoraires, "Saisissez d'abord au moins un horaire (ex : 8h30).", "err");
+      return;
+    }
+    await printSequence(els.statusHoraires,
+      horaires.map((h) => ({ canvas: horairesCanvas(h, par), copies: etiquettes })),
+      `${horaires.length * etiquettes} étiquettes imprimées (${horaires.length} horaires).`);
   });
 
   // ===================== Étiquette texte libre =====================
 
+  function libreOptions() {
+    return {
+      upper: els.libreUpper.checked,
+      align: els.libreAlign.value,
+      fixedSize: els.libreAuto.checked ? null : clampInt(els.libreSize.value, 8, 90, 30),
+      lineGap: clampInt(els.libreInterligne.value, 0, 20, 3),
+      wrap: els.libreWrap.checked,
+    };
+  }
+
   function updateLibrePreview() {
-    const lines = parseRichText(els.libreTexte.value, els.libreToutGras.checked);
-    const landscape = lines.length
-      ? composeRichCanvas(lines)
-      : composeSectionsCanvas([{ text: "(étiquette vide)", weight: "regular" }]);
-    const target = els.librePreviewCanvas;
-    target.width = landscape.width;
-    target.height = landscape.height;
-    const ctx = target.getContext("2d");
-    ctx.clearRect(0, 0, target.width, target.height);
-    ctx.drawImage(landscape, 0, 0);
-    return landscape;
+    return paintPreview(els.librePreviewCanvas,
+      composeLibreCanvas(els.libreTexte.value, els.libreToutGras.checked, libreOptions()));
   }
 
   els.libreTexte.addEventListener("input", updateLibrePreview);
-  els.libreToutGras.addEventListener("change", updateLibrePreview);
+  [els.libreToutGras, els.libreAlign, els.libreInterligne, els.libreWrap, els.libreUpper, els.libreAuto]
+    .forEach((el) => el.addEventListener("change", updateLibrePreview));
+  els.libreSize.addEventListener("input", updateLibrePreview);
 
   // Entoure la sélection de ** (ou retire les ** si elle en est déjà entourée).
   els.btnLibreGras.addEventListener("click", () => {
@@ -2158,9 +2711,48 @@ function patientLabel(p) {
     updateLibrePreview();
   });
 
+  // Agrandit (+1) ou réduit (-1) la ou les lignes du curseur / de la sélection, en ajoutant ou
+  // retirant les marqueurs « < », « > » ou « >> » en début de ligne.
+  function changeLibreLineSize(delta) {
+    const ta = els.libreTexte;
+    const v = ta.value;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const first = s === 0 ? 0 : v.lastIndexOf("\n", s - 1) + 1;
+    const lastEnd = (e > s && v[e - 1] === "\n") ? e - 1 : e;
+    let end = v.indexOf("\n", lastEnd);
+    if (end === -1) end = v.length;
+    const niveaux = ["<", "", ">", ">>"];
+    const nouveau = v.slice(first, end).split("\n").map((ligne) => {
+      const stripped = ligne.replace(/^\s+/, "");
+      let actuel = "";
+      let corps = ligne;
+      for (const m of [">>", ">", "<"]) {
+        if (stripped.startsWith(m)) {
+          actuel = m;
+          corps = stripped.slice(m.length).replace(/^ +/, "");
+          break;
+        }
+      }
+      const idx = Math.max(0, Math.min(3, niveaux.indexOf(actuel) + delta));
+      return (niveaux[idx] ? niveaux[idx] + " " : "") + corps;
+    }).join("\n");
+    ta.value = v.slice(0, first) + nouveau + v.slice(end);
+    ta.focus();
+    ta.setSelectionRange(first, first + nouveau.length);
+    updateLibrePreview();
+  }
+  els.btnLibrePlus.addEventListener("click", () => changeLibreLineSize(1));
+  els.btnLibreMoins.addEventListener("click", () => changeLibreLineSize(-1));
+
   els.btnEffacerLibre.addEventListener("click", () => {
     els.libreTexte.value = "";
     els.libreToutGras.checked = false;
+    els.libreUpper.checked = false;
+    els.libreWrap.checked = true;
+    els.libreAuto.checked = true;
+    els.libreAlign.value = "center";
+    els.libreInterligne.value = "3";
     els.libreCopies.value = 1;
     updateLibrePreview();
     setStatus(els.statusLibre, "Prêt.");
@@ -2209,6 +2801,12 @@ function patientLabel(p) {
   updatePrepPreview();
   refreshNomseulPicker();
   updateNomseulPreview();
+  buildJoursButtons();
+  updateJoursPreview();
+  buildPictoTiles();
+  updatePictoContent();
+  updatePictoPreview();
+  updateHorairesPreview();
   updateLibrePreview();
 
   // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
