@@ -345,6 +345,18 @@
     background: #e5e7eb;
     color: #333;
   }
+  .topbar .btn-stop {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 800;
+    border-radius: 999px;
+    background: #d32f2f;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(211,47,47,0.45);
+  }
+  .topbar .btn-stop:active { background: #a31515; }
   #printerInfo { margin: 0 0 8px; }
   #printerInfo:empty { display: none; }
   .jours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
@@ -379,6 +391,7 @@
 <div class="topbar" id="topbar">
   <button class="btn-retour" id="btnRetour" type="button" data-back hidden><span class="icon">‹</span> Retour</button>
   <button id="btnConnecter" class="btn-imprimante" type="button">Connecter l'imprimante</button>
+  <button id="btnStop" class="btn-stop" type="button">■ STOP</button>
 </div>
 <div id="printerInfo"></div>
 
@@ -1769,15 +1782,30 @@ function patientLabel(p) {
   let printChain = Promise.resolve();
   let pendingPrints = 0;
 
+  // Bouton STOP : chaque impression mémorise la « génération » en cours quand elle est ajoutée ;
+  // un arrêt incrémente la génération, ce qui annule l'impression en cours (après l'étiquette
+  // qui est en train de sortir) et toutes celles qui attendent dans la file.
+  let stopGen = 0;
+  const STOP_MESSAGE = "Impression arrêtée.";
+
+  function stopAllPrints() {
+    const hadWork = pendingPrints > 0;
+    stopGen++;
+    return hadWork;
+  }
+
   async function printQueued(statusEl, landscape, copies) {
+    const token = stopGen;
     const ahead = pendingPrints;
     pendingPrints++;
     setStatus(statusEl, ahead ? `En file d'attente (${ahead} avant elle)…` : "Connexion à l'imprimante FICHERO…");
     const run = printChain.then(async () => {
+      if (token !== stopGen) throw new Error(STOP_MESSAGE);
       setStatus(statusEl, "Connexion à l'imprimante FICHERO…");
       await ensureConnected();
+      if (token !== stopGen) throw new Error(STOP_MESSAGE);
       setStatus(statusEl, "Impression en cours…");
-      await printLandscapeCanvas(landscape, copies, DENSITY);
+      await printLandscapeCanvas(landscape, copies, DENSITY, token);
     });
     printChain = run.catch(() => {});
     try {
@@ -1834,13 +1862,14 @@ function patientLabel(p) {
     return flags.length ? flags.join(", ") : "prête";
   }
 
-  async function printLandscapeCanvas(landscape, copies, density) {
+  async function printLandscapeCanvas(landscape, copies, density, token) {
     const { raster, rows } = landscapeToRaster(landscape);
 
     await send([0x10, 0xff, 0x10, 0x00, density], true);
     await sleep(100);
 
     for (let c = 0; c < copies; c++) {
+      if (token !== stopGen) throw new Error(STOP_MESSAGE); // arrêt demandé : plus rien n'est envoyé
       const status = await send([0x10, 0xff, 0x40], true);
       const statusByte = status.length ? status[status.length - 1] : 0;
       if (statusByte & 0x02 || statusByte & 0x04 || statusByte & 0x10 || statusByte & 0x40) {
@@ -1973,6 +2002,7 @@ function patientLabel(p) {
   attachAutoFormat(els.prepDateRdv, formatDateHeure);
 
   function setStatus(el, text, kind) {
+    if (text.includes("Impression arrêtée")) text = "Impression arrêtée."; // pas de « Erreur : » pour un arrêt voulu
     el.textContent = text;
     el.className = "status" + (kind ? " " + kind : "");
   }
@@ -2806,6 +2836,13 @@ function patientLabel(p) {
     } catch (e) {
       setStatus(els.statusLibre, `Erreur :\n${e.message || e}`, "err");
     }
+  });
+  // ===================== Bouton STOP (visible sur toutes les pages) =====================
+
+  els.btnStop.addEventListener("click", () => {
+    const hadWork = stopAllPrints();
+    els.btnStop.textContent = hadWork ? "■ ARRÊT…" : "Rien à arrêter";
+    setTimeout(() => { els.btnStop.textContent = "■ STOP"; }, 2000);
   });
 
   // ===================== Connexion imprimante (globale) =====================
