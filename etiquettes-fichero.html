@@ -674,6 +674,27 @@
 </div>
 
 <div class="card card-pharma">
+  <div class="card-header">Étiquettes rapides (commande de médicaments)</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">Un bouton imprime l'étiquette tout de suite.</div>
+    <div class="buttons" style="margin-top:8px">
+      <button id="btnRapideCommander" class="btn-pharma" type="button">À commander</button>
+      <button id="btnRapideChercher" class="btn-pharma" type="button">À aller chercher</button>
+      <button id="btnRapideCommande" class="btn-pharma" type="button">Commandé le ____</button>
+    </div>
+
+    <label for="rapideCopies">Nombre d'étiquettes</label>
+    <input type="number" id="rapideCopies" value="1" min="1" max="30">
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="rapidePreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+    <div id="statusRapide" class="status"></div>
+  </div>
+</div>
+
+<div class="card card-pharma">
   <div class="card-header">Ordonnance : valable jusqu'au…</div>
   <div class="card-body">
     <label style="margin-top:0" for="ordoDate">Date de l'ordonnance</label>
@@ -2950,6 +2971,52 @@ function patientLabel(p) {
     await printSequence(els.statusPharma, [{ canvas: updatePharmaPreview(), copies }],
       `${copies} étiquette(s) imprimée(s).`);
   });
+
+  // --- Étiquettes rapides : commande de médicaments ---
+
+  const RAPIDES = {
+    commander: "À commander",
+    chercher: "À aller chercher",
+    commande: "Commandé le",
+  };
+
+  // « À commander » / « À aller chercher » : un texte en gras, le plus grand possible.
+  // « Commandé le » : le texte à gauche suivi d'un trait pour écrire la date à la main.
+  function composeRapideCanvas(kind) {
+    const texte = RAPIDES[kind];
+    if (kind !== "commande") return composeSectionsCanvas([{ text: texte, weight: "bold" }], true);
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+    const xLeft = PICTO_AREA_X + 4;
+    const areaW = PICTO_AREA_W - 8;
+    const fit = fitLines(ctx, texte, 235, 64, true, 60, false);
+    const ink = fit.inks[0];
+    const top = Math.round((PRINTHEAD_PX - fit.h) / 2);
+    ctx.font = fit.font;
+    ctx.fillText(texte, xLeft, Math.round(top + ink.ascent));
+    ctx.fillText(texte, xLeft + 1, Math.round(top + ink.ascent)); // léger renfort du gras
+    const baseline = top + Math.round(fit.h);
+    const x0 = Math.round(xLeft + ink.width + 10);
+    ctx.fillRect(x0, baseline - 2, xLeft + areaW - x0, 3);
+    return landscape;
+  }
+
+  async function printRapide(kind) {
+    const copies = clampInt(els.rapideCopies.value, 1, 30, 1);
+    const canvas = paintPreview(els.rapidePreviewCanvas, composeRapideCanvas(kind));
+    await printSequence(els.statusRapide, [{ canvas, copies }],
+      `« ${RAPIDES[kind]} » : ${copies} étiquette(s) imprimée(s).`);
+  }
+  els.btnRapideCommander.addEventListener("click", () => printRapide("commander"));
+  els.btnRapideChercher.addEventListener("click", () => printRapide("chercher"));
+  els.btnRapideCommande.addEventListener("click", () => printRapide("commande"));
+  paintPreview(els.rapidePreviewCanvas, composeRapideCanvas("commande"));
 
   // --- Ordonnance ---
 
