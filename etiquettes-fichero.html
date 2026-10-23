@@ -965,7 +965,12 @@
   const MAX_ROWS = LABEL_LENGTH_MM * DOTS_PER_MM;   // 400 px = longueur de l'étiquette
   const PRINTHEAD_PX = 96;                           // largeur fixe de la tête d'impression
   const MARGIN_PX = 3;
-  const HORIZONTAL_SHIFT_PX = -16;                   // décale le texte de 2mm vers la gauche
+  // Calage horizontal mesuré sur une étiquette imprimée : l'impression démarre environ 6 points
+  // (0,8 mm) après le bord avant de l'étiquette, donc les ~7 derniers points de l'image sont
+  // coupés. Le texte reste dans la zone [TEXT_X0, TEXT_X1] (environ 1 mm de marge de chaque côté).
+  const TEXT_X0 = 2;
+  const TEXT_X1 = 378;
+  const TEXT_W = TEXT_X1 - TEXT_X0;
   const DENSITY = 2;
   const BYTES_PER_ROW = PRINTHEAD_PX / 8;             // 12
   const LINE_GAP = 3;
@@ -1395,7 +1400,7 @@ function patientLabel(p) {
   // plus grande police qui tient sur les 96px de hauteur disponible, en empilant les
   // lignes selon leur encre réelle (pas une hauteur de police approximative).
   function composeSectionsCanvas(rawSections, oneLinePerSection = false) {
-    const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
+    const maxTextWidth = TEXT_W;
     const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
 
     const measureCanvas = document.createElement("canvas");
@@ -1457,7 +1462,7 @@ function patientLabel(p) {
     for (const line of chosen.lines) {
       ctx.font = line.font;
       const baselineY = cursor + line.ascent;
-      let x = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      let x = Math.max(TEXT_X0, TEXT_X0 + Math.round((TEXT_W - line.width) / 2));
       if (line.segs) {
         for (const seg of line.segs) {
           ctx.font = seg.font;
@@ -1480,7 +1485,7 @@ function patientLabel(p) {
   // (sinon la plus grande qui tient).
   function composeRichCanvas(lines, opts) {
     const { align = "center", fixedSize = null, lineGap = LINE_GAP, wrap = true } = opts || {};
-    const maxTextWidth = MAX_ROWS - 2 * MARGIN_PX;
+    const maxTextWidth = TEXT_W;
     const maxStackHeight = PRINTHEAD_PX - 2 * MARGIN_PX;
     const mctx = document.createElement("canvas").getContext("2d");
 
@@ -1583,9 +1588,9 @@ function patientLabel(p) {
     for (const line of chosen.lines) {
       const baselineY = cursor + line.ascent;
       let x0;
-      if (align === "left") x0 = MARGIN_PX + 2;
-      else if (align === "right") x0 = Math.max(MARGIN_PX, MAX_ROWS - 32 - line.width - 2);
-      else x0 = Math.max(MARGIN_PX, Math.round((MAX_ROWS - line.width) / 2) + HORIZONTAL_SHIFT_PX);
+      if (align === "left") x0 = TEXT_X0;
+      else if (align === "right") x0 = Math.max(TEXT_X0, TEXT_X1 - line.width);
+      else x0 = Math.max(TEXT_X0, TEXT_X0 + Math.round((TEXT_W - line.width) / 2));
       for (const it of line.items) {
         ctx.font = it.font;
         ctx.fillText(it.text, x0 + it.x, baselineY);
@@ -1693,8 +1698,8 @@ function patientLabel(p) {
     return { font, size: 8, lines: [text], inks, h: inks[0].ascent + inks[0].descent };
   }
 
-  const PICTO_AREA_X = 2;
-  const PICTO_AREA_W = MAX_ROWS - 32; // le bord droit de l'étiquette est tronqué (voir HORIZONTAL_SHIFT_PX)
+  const PICTO_AREA_X = TEXT_X0;
+  const PICTO_AREA_W = TEXT_W; // zone imprimable (voir le calage horizontal TEXT_X0 / TEXT_X1)
 
   // Étiquette de pictogrammes : cells = [{ icon, text }]. L'étiquette est partagée en autant de
   // cases égales, séparées par un trait de découpe pointillé, pour pouvoir les découper et en
