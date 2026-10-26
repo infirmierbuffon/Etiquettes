@@ -873,6 +873,26 @@
   </div>
 </div>
 
+<div class="card card-nomseul">
+  <div class="card-header">Étiquette contact du cabinet</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">À coller sur le pilulier : le numéro à appeler pour la famille ou les secours.</div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="contactPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <label for="contactCopies">Nombre d'étiquettes</label>
+    <input type="number" id="contactCopies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimerContact" class="btn-nomseul" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusContact" class="status"></div>
+  </div>
+</div>
+
 </div>
 
 <!-- ============================= Étiquette texte libre ============================= -->
@@ -978,7 +998,7 @@
 
   // Pictogrammes noir et blanc (listes d'opérations de dessin sur une grille 100x100,
   // partagées avec l'application Mac), mots en français / portugais et noms des jours.
-  const PICTO_DATA = {"order":["sunrise","sun","moon","bed","sunset","cup","meal","water","pill","ifneeded","clock"],"icons":{"sunrise":{"fr":"MATIN","pt":"MANHÃ","nom":"Matin (soleil levant)","ops":[["l",23.2,52.5,9.3,44.5,7,1],["l",34.5,41.2,26.5,27.3,7,1],["l",50.0,37.0,50.0,21.0,7,1],["l",65.5,41.2,73.5,27.3,7,1],["l",76.8,52.5,90.7,44.5,7,1],["c",50,68,22,1],["b",0,68,100,40,0],["l",8,68,92,68,6,1],["l",26,82,74,82,6,1]]},"sun":{"fr":"MIDI","pt":"MEIO-DIA","nom":"Midi (soleil haut)","ops":[["c",50,50,19,1],["l",78.0,50.0,96.0,50.0,8,1],["l",69.8,30.2,82.5,17.5,8,1],["l",50.0,22.0,50.0,4.0,8,1],["l",30.2,30.2,17.5,17.5,8,1],["l",22.0,50.0,4.0,50.0,8,1],["l",30.2,69.8,17.5,82.5,8,1],["l",50.0,78.0,50.0,96.0,8,1],["l",69.8,69.8,82.5,82.5,8,1]]},"sunset":{"fr":"APRÈS-MIDI","pt":"TARDE","nom":"Après-midi (soleil couchant)","ops":[["l",23.2,42.5,11.0,35.5,7,1],["l",50.0,27.0,50.0,13.0,7,1],["l",76.8,42.5,89.0,35.5,7,1],["c",50,58,22,1],["b",0,58,100,50,0],["l",8,58,92,58,6,1],["l",14,72,46,72,6,1],["l",54,72,86,72,6,1],["l",28,86,72,86,6,1]]},"moon":{"fr":"SOIR","pt":"NOITE","nom":"Soir (lune)","ops":[["c",44,52,36,1],["c",64,40,31,0],["p",[78.0,13.0,80.8,21.2,89.0,24.0,80.8,26.8,78.0,35.0,75.2,26.8,67.0,24.0,75.2,21.2],1],["p",[85.0,50.0,87.0,56.0,93.0,58.0,87.0,60.0,85.0,66.0,83.0,60.0,77.0,58.0,83.0,56.0],1]]},"bed":{"fr":"COUCHER","pt":"DEITAR","nom":"Coucher (lit et Z)","ops":[["b",6,36,9,50,1],["b",6,62,88,12,1],["b",85,74,9,12,1],["b",6,74,9,12,1],["b",20,48,24,12,1],["b",46,50,48,10,1],["l",60,14,76,14,5,1],["l",76,14,60,30,5,1],["l",60,30,76,30,5,1],["l",82,4,92,4,4,1],["l",92,4,82,14,4,1],["l",82,14,92,14,4,1]]},"cup":{"fr":"PETIT-DÉJ.","pt":"PEQ. ALMOÇO","nom":"Petit-déjeuner (tasse)","ops":[["r",70,54,15,7],["p",[16,36,68,36,61,78,23,78],1],["l",28,10,28,26,5,1],["l",42,10,42,26,5,1],["l",56,10,56,26,5,1],["l",10,88,76,88,6,1]]},"meal":{"fr":"REPAS","pt":"REFEIÇÃO","nom":"Repas (assiette et couverts)","ops":[["r",52,50,25,7],["r",52,50,12,4],["l",12,44,12,84,6,1],["l",5,14,5,38,4,1],["l",12,14,12,38,4,1],["l",19,14,19,38,4,1],["l",5,38,19,38,4,1],["l",92,52,92,86,6,1],["p",[86,14,94,14,97,54,86,54],1]]},"water":{"fr":"EAU","pt":"ÁGUA","nom":"Verre d'eau","ops":[["l",24,14,31,86,7,1],["l",76,14,69,86,7,1],["l",31,86,69,86,7,1],["p",[27.5,44,72.5,44,69,84,31,84],1]]},"pill":{"fr":"MÉDICAMENT","pt":"REMÉDIO","nom":"Médicament (gélule)","ops":[["l",26,74,74,26,38,1],["l",26,74,74,26,23,0],["l",50,50,74,26,23,1]]},"clock":{"fr":"HEURE","pt":"HORA","nom":"Horaire (horloge)","ops":[["r",50,50,40,8],["l",50,50,50,22,7,1],["l",50,50,70,62,7,1],["c",50,50,6,1]]},"ifneeded":{"fr":"SI BESOIN","pt":"SE NECESSÁRIO","nom":"Si besoin (médicament et point d'interrogation)","ops":[["l",12,88,50,50,30,1],["l",12,88,50,50,18,0],["l",31,69,50,50,18,1],["l",56,26,62,14,9,1],["l",62,14,74,10,9,1],["l",74,10,86,14,9,1],["l",86,14,92,26,9,1],["l",92,26,88,38,9,1],["l",88,38,74,48,9,1],["l",74,48,74,62,9,1],["c",74,80,7,1]]}},"days":{"fr":["LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI","DIMANCHE"],"pt":["SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO","DOMINGO"]}};
+  const PICTO_DATA = {"order":["sunrise","sun","moon","bed","sunset","cup","meal","water","pill","ifneeded","clock"],"icons":{"sunrise":{"fr":"MATIN","pt":"MANHÃ","nom":"Matin (soleil levant)","ops":[["l",23.2,52.5,9.3,44.5,7,1],["l",34.5,41.2,26.5,27.3,7,1],["l",50.0,37.0,50.0,21.0,7,1],["l",65.5,41.2,73.5,27.3,7,1],["l",76.8,52.5,90.7,44.5,7,1],["c",50,68,22,1],["b",0,68,100,40,0],["l",8,68,92,68,6,1],["l",26,82,74,82,6,1]]},"sun":{"fr":"MIDI","pt":"MEIO-DIA","nom":"Midi (soleil haut)","ops":[["c",50,50,19,1],["l",78.0,50.0,96.0,50.0,8,1],["l",69.8,30.2,82.5,17.5,8,1],["l",50.0,22.0,50.0,4.0,8,1],["l",30.2,30.2,17.5,17.5,8,1],["l",22.0,50.0,4.0,50.0,8,1],["l",30.2,69.8,17.5,82.5,8,1],["l",50.0,78.0,50.0,96.0,8,1],["l",69.8,69.8,82.5,82.5,8,1]]},"sunset":{"fr":"APRÈS-MIDI","pt":"TARDE","nom":"Après-midi (soleil couchant)","ops":[["l",23.2,42.5,11.0,35.5,7,1],["l",50.0,27.0,50.0,13.0,7,1],["l",76.8,42.5,89.0,35.5,7,1],["c",50,58,22,1],["b",0,58,100,50,0],["l",8,58,92,58,6,1],["l",14,72,46,72,6,1],["l",54,72,86,72,6,1],["l",28,86,72,86,6,1]]},"moon":{"fr":"SOIR","pt":"NOITE","nom":"Soir (lune)","ops":[["c",44,52,36,1],["c",64,40,31,0],["p",[78.0,13.0,80.8,21.2,89.0,24.0,80.8,26.8,78.0,35.0,75.2,26.8,67.0,24.0,75.2,21.2],1],["p",[85.0,50.0,87.0,56.0,93.0,58.0,87.0,60.0,85.0,66.0,83.0,60.0,77.0,58.0,83.0,56.0],1]]},"bed":{"fr":"COUCHER","pt":"DEITAR","nom":"Coucher (lit et Z)","ops":[["b",6,36,9,50,1],["b",6,62,88,12,1],["b",85,74,9,12,1],["b",6,74,9,12,1],["b",20,48,24,12,1],["b",46,50,48,10,1],["l",60,14,76,14,5,1],["l",76,14,60,30,5,1],["l",60,30,76,30,5,1],["l",82,4,92,4,4,1],["l",92,4,82,14,4,1],["l",82,14,92,14,4,1]]},"cup":{"fr":"PETIT-DÉJ.","pt":"PEQ. ALMOÇO","nom":"Petit-déjeuner (tasse)","ops":[["r",70,54,15,7],["p",[16,36,68,36,61,78,23,78],1],["l",28,10,28,26,5,1],["l",42,10,42,26,5,1],["l",56,10,56,26,5,1],["l",10,88,76,88,6,1]]},"meal":{"fr":"REPAS","pt":"REFEIÇÃO","nom":"Repas (assiette et couverts)","ops":[["r",52,50,25,7],["r",52,50,12,4],["l",12,44,12,84,6,1],["l",5,14,5,38,4,1],["l",12,14,12,38,4,1],["l",19,14,19,38,4,1],["l",5,38,19,38,4,1],["l",92,52,92,86,6,1],["p",[86,14,94,14,97,54,86,54],1]]},"water":{"fr":"EAU","pt":"ÁGUA","nom":"Verre d'eau","ops":[["l",24,14,31,86,7,1],["l",76,14,69,86,7,1],["l",31,86,69,86,7,1],["p",[27.5,44,72.5,44,69,84,31,84],1]]},"pill":{"fr":"MÉDICAMENT","pt":"REMÉDIO","nom":"Médicament (gélule)","ops":[["l",26,74,74,26,38,1],["l",26,74,74,26,23,0],["l",50,50,74,26,23,1]]},"clock":{"fr":"HEURE","pt":"HORA","nom":"Horaire (horloge)","ops":[["r",50,50,40,8],["l",50,50,50,22,7,1],["l",50,50,70,62,7,1],["c",50,50,6,1]]},"ifneeded":{"fr":"SI BESOIN","pt":"SE NECESSÁRIO","nom":"Si besoin (médicament et point d'interrogation)","ops":[["l",12,88,50,50,30,1],["l",12,88,50,50,18,0],["l",31,69,50,50,18,1],["l",56,26,62,14,9,1],["l",62,14,74,10,9,1],["l",74,10,86,14,9,1],["l",86,14,92,26,9,1],["l",92,26,88,38,9,1],["l",88,38,74,48,9,1],["l",74,48,74,62,9,1],["c",74,80,7,1]]},"phone":{"fr":"TÉLÉPHONE","pt":"TELEFONE","nom":"Téléphone (sonnerie)","ops":[["b",36,4,28,92,1],["b",28,12,44,76,1],["c",36,12,8,1],["c",64,12,8,1],["c",36,88,8,1],["c",64,88,8,1],["b",35,22,30,52,0],["c",50,83,4.5,0],["l",44,13,56,13,3,0],["l",78,30,88,22,5,1],["l",80,48,94,48,5,1],["l",78,66,88,74,5,1],["l",22,30,12,22,5,1],["l",20,48,6,48,5,1],["l",22,66,12,74,5,1]]}},"days":{"fr":["LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI","DIMANCHE"],"pt":["SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO","DOMINGO"]}};
 
   // --- Constantes Bluetooth (protocole FICHERO D11s / AiYin) -------------
   const SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
@@ -2850,6 +2870,89 @@ function patientLabel(p) {
       horaires.map((h) => ({ canvas: horairesCanvas(h, par), copies: etiquettes })),
       `${horaires.length * etiquettes} étiquettes imprimées (${horaires.length} horaires).`);
   });
+
+  // --- Étiquette contact du cabinet (à coller sur le pilulier) ---
+
+  const CONTACT_CABINET = "Cabinet Infirmier";
+  const CONTACT_PRENOM = "Antoine";
+  const CONTACT_NOM = "GRAVIER";
+  const CONTACT_TEL = "07 66 48 05 95";
+
+  // Cadre arrondi, icône de téléphone, « Cabinet Infirmier », « Antoine GRAVIER » (nom en gras)
+  // et le numéro de téléphone en gros et en gras.
+  function composeContactCanvas() {
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+
+    const rx = TEXT_X0 + 5 + 1.5, ry = 5.5, rw = (TEXT_X1 - 5) - (TEXT_X0 + 5) + 1 - 3, rh = 85, r = 12;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    ctx.moveTo(rx + r, ry);
+    ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, r);
+    ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
+    ctx.arcTo(rx, ry + rh, rx, ry, r);
+    ctx.arcTo(rx, ry, rx + rw, ry, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    const icon = 56;
+    drawPictoIcon(ctx, "phone", TEXT_X0 + 18, Math.floor((PRINTHEAD_PX - icon) / 2), icon);
+    const tx0 = TEXT_X0 + 18 + icon + 12;
+    const tw = TEXT_X1 - 14 - tx0;
+
+    function fitMixed(segs, maxW, maxH) {
+      let result = null;
+      for (let size = 60; size >= 8; size--) {
+        const parts = segs.map(([text, bold]) => {
+          const font = `${bold ? "bold " : ""}${size}px ${FONT_FAMILY}`;
+          return { text, bold, font, ink: measureLineInk(ctx, text, font) };
+        });
+        const w = parts.reduce((sum, q) => sum + q.ink.width, 0);
+        const ascent = Math.max(...parts.map((q) => q.ink.ascent));
+        const h = ascent + Math.max(...parts.map((q) => q.ink.descent));
+        result = { parts, w, h, ascent };
+        if (w <= maxW && h <= maxH) break;
+      }
+      return result;
+    }
+
+    const lines = [
+      [[[CONTACT_CABINET, false]], 13],
+      [[[CONTACT_PRENOM + " ", false], [CONTACT_NOM, true]], 22],
+      [[[CONTACT_TEL, true]], 28],
+    ];
+    const fitted = lines.map(([segs, maxH]) => fitMixed(segs, tw, maxH));
+    const gap = 5;
+    let y = Math.floor((PRINTHEAD_PX - (fitted.reduce((sum, f) => sum + f.h, 0) + gap * (fitted.length - 1))) / 2);
+    for (const f of fitted) {
+      let x = tx0 + (tw - f.w) / 2;
+      for (const q of f.parts) {
+        ctx.font = q.font;
+        ctx.fillText(q.text, Math.round(x), Math.round(y + f.ascent));
+        if (q.bold) ctx.fillText(q.text, Math.round(x) + 1, Math.round(y + f.ascent)); // léger renfort du gras
+        x += q.ink.width;
+      }
+      y += f.h + gap;
+    }
+    return landscape;
+  }
+
+  function updateContactPreview() {
+    return paintPreview(els.contactPreviewCanvas, composeContactCanvas());
+  }
+  els.btnImprimerContact.addEventListener("click", async () => {
+    const copies = clampInt(els.contactCopies.value, 1, 30, 1);
+    await printSequence(els.statusContact, [{ canvas: updateContactPreview(), copies }],
+      `${copies} étiquette(s) contact imprimée(s).`);
+  });
+  updateContactPreview();
 
   // ===================== Pharmacies et ordonnances =====================
 
