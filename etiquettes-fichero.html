@@ -688,7 +688,7 @@
 
     <div class="buttons">
       <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
-      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
+      <button id="btnImprimerIdent" class="btn-prep" type="button">Imprimer les étiquettes d'identification</button> <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
     </div>
     <div id="statusPrep" class="status"></div>
   </div>
@@ -2736,6 +2736,45 @@ function patientLabel(p) {
     try {
       await printQueued(els.statusPrep, landscape, 1);
       setStatus(els.statusPrep, "Étiquette de préparation imprimée.", "ok");
+    } catch (e) {
+      setStatus(els.statusPrep, `Erreur :\n${e.message || e}`, "err");
+    }
+  });
+
+  // Étiquettes d'identification : une par tube + une pour la fiche de renseignements
+  // (naissance, adresse et NIR toujours affichés), d'après la fiche du patient enregistré.
+  els.btnImprimerIdent.addEventListener("click", async () => {
+    const f = prepFields();
+    if (!f.nom || !f.prenom) {
+      setStatus(els.statusPrep, "Merci de renseigner au moins le nom et le prénom.", "err");
+      return;
+    }
+    const same = (p) => (p.nom || "").trim().toUpperCase() === f.nom
+      && formatPrenom((p.prenom || "").trim()).toLowerCase() === f.prenom.toLowerCase();
+    const rec = (selectedPatientRecord && same(selectedPatientRecord)) ? selectedPatientRecord : patients.find(same);
+    if (!rec) {
+      setStatus(els.statusPrep, "Patient non enregistré : date de naissance, adresse et NIR inconnus. Choisissez-le dans la liste (ou enregistrez-le dans la rubrique Patient).", "err");
+      return;
+    }
+    let nbTubes = 0;
+    for (const color of TUBE_COLORS) nbTubes += Math.max(0, parseInt(tubeInputs[color].value, 10) || 0);
+    const copies = Math.max(1, Math.min(30, nbTubes + 1));
+    const landscape = composeSectionsCanvas(buildPatientSections({
+      civilite: rec.civilite || "",
+      nom: (rec.nom || "").toUpperCase(),
+      prenom: formatPrenom(rec.prenom || ""),
+      nomNaissance: (rec.nomNaissance || "").toUpperCase(),
+      ddn: rec.ddn || "",
+      sexe: rec.sexe || "",
+      adresse: rec.adresse || "",
+      codepostal: rec.codepostal || "",
+      commune: (rec.commune || "").toUpperCase(),
+      email: "",
+      nir: rec.nir || "",
+    }, { naissance: true, adresse: true, email: false, nir: true }));
+    try {
+      await printQueued(els.statusPrep, landscape, copies);
+      setStatus(els.statusPrep, `${copies} étiquette(s) d'identification imprimée(s) (${nbTubes} tube(s) + 1 fiche).`, "ok");
     } catch (e) {
       setStatus(els.statusPrep, `Erreur :\n${e.message || e}`, "err");
     }
