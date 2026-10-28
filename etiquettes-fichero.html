@@ -637,19 +637,6 @@
       <button id="btnEffacerPatientPrep" class="secondary" type="button">Effacer</button>
     </div>
 
-    <label>Aperçu</label>
-    <div class="preview-wrap">
-      <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
-    </div>
-
-    <div class="buttons">
-      <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
-      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
-    </div>
-    <div id="statusPrep" class="status"></div>
-
-    <div class="divider"></div>
-
     <label for="prepNom">Nom *</label>
     <input type="text" id="prepNom" autocapitalize="characters">
 
@@ -691,6 +678,19 @@
 
     <label for="prepCommentaire">Commentaire</label>
     <input type="text" id="prepCommentaire" placeholder="ex : à congeler dans 30 min">
+
+    <div class="divider"></div>
+
+    <label>Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <div class="buttons">
+      <button id="btnImprimerPrep" class="btn-prep" type="button">Imprimer cette étiquette</button>
+      <button id="btnEffacerPrep" class="secondary" type="button">Effacer</button>
+    </div>
+    <div id="statusPrep" class="status"></div>
   </div>
 </div>
 </div>
@@ -3320,7 +3320,9 @@ function patientLabel(p) {
         const hh = digits.length >= 12 ? `${digits.slice(8, 10)}:${digits.slice(10, 12)}` : "08:00";
         pickerEl.value = `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}T${hh}`;
       } else {
-        pickerEl.value = "";
+        const maintenant = new Date(); // sans date saisie : le calendrier s'ouvre sur aujourd'hui à 08:00
+        const p2 = (n) => String(n).padStart(2, "0");
+        pickerEl.value = `${maintenant.getFullYear()}-${p2(maintenant.getMonth() + 1)}-${p2(maintenant.getDate())}T08:00`;
       }
     };
     pickerEl.addEventListener("change", () => {
