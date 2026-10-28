@@ -271,7 +271,7 @@
   .resume-ordo { margin-top: 10px; font-size: 14px; font-weight: 700; }
   .cal-wrap, .row2 > .cal-wrap { position: relative; flex: 0 0 auto; }
   .cal-wrap button { min-width: 0; padding: 10px 12px; }
-  .cal-wrap input[type="date"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+  .cal-wrap input[type="date"], .cal-wrap input[type="datetime-local"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
   button.secondary {
     background: #e5e7eb;
     color: #333;
@@ -321,6 +321,39 @@
     font-weight: 500;
     text-align: center;
   }
+  .tubes-row.tubes-visuels { flex-wrap: nowrap; justify-content: space-between; gap: 6px; }
+  .tubes-visuels .tube-cell { flex: 1 1 0; width: auto; min-width: 0; }
+  .tube-btn {
+    position: relative;
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: 10px;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tube-btn svg { width: 100%; height: auto; max-height: 104px; display: block; }
+  .tube-btn.vide svg { opacity: 0.5; }
+  .tube-btn:active svg { transform: scale(0.95); }
+  .tube-count {
+    position: absolute;
+    top: -4px;
+    right: -2px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 24px;
+    text-align: center;
+  }
+  .tube-count[hidden] { display: none; }
+  .tube-minus { flex: none; min-width: 0; width: 100%; padding: 2px 0; margin-top: 4px; font-size: 20px; line-height: 1.2; border-radius: 8px; }
   .tube-cell input {
     width: 100%;
     padding: 6px 2px;
@@ -595,6 +628,15 @@
 <div class="card card-prep">
   <div class="card-header">Étiquette boîte de prélèvement (préparée à l'avance)</div>
   <div class="card-body">
+    <label for="prepPicker" style="margin-top:0">Patient enregistré</label>
+    <div class="picker-row">
+      <div class="suggest-wrap">
+        <input type="text" id="prepPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <ul class="suggest" id="prepSuggest" hidden></ul>
+      </div>
+      <button id="btnEffacerPatientPrep" class="secondary" type="button">Effacer</button>
+    </div>
+
     <label>Aperçu</label>
     <div class="preview-wrap">
       <canvas id="prepPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
@@ -632,10 +674,17 @@
     <input type="text" id="prepPrescripteur" placeholder="ex : CHU Dijon, Dr MACHIN">
 
     <label for="prepDateRdv">Date et heure du RDV</label>
-    <input type="text" id="prepDateRdv" placeholder="JJ/MM/AAAA HH:MM">
+    <div class="row2">
+      <div><input type="text" id="prepDateRdv" placeholder="JJ/MM/AAAA HH:MM" inputmode="numeric"></div>
+      <div class="cal-wrap">
+        <button class="btn-prep" type="button" tabindex="-1">📅</button>
+        <input type="datetime-local" id="prepRdvPicker" aria-label="Choisir la date et l'heure dans le calendrier">
+      </div>
+    </div>
 
     <label>Tubes à prélever</label>
-    <div class="tubes-row" id="tubesContainer"></div>
+    <div class="tubes-row tubes-visuels" id="tubesContainer"></div>
+    <div class="hint">Touchez un tube pour en ajouter un, « − » pour en retirer un.</div>
 
     <label for="prepAutresTubes">Autres tubes</label>
     <input type="text" id="prepAutresTubes" placeholder="ex : 1 Rouge, 1 Rose">
@@ -755,6 +804,7 @@
         <input type="text" id="nomseulPicker" placeholder="Rechercher (nom, prénom)…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <ul class="suggest" id="nomseulSuggest" hidden></ul>
       </div>
+      <button id="btnEffacerPatientNomseul" class="secondary" type="button">Effacer</button>
     </div>
 
     <label style="margin-top:12px">Aperçu</label>
@@ -2203,6 +2253,7 @@ function patientLabel(p) {
 
   const patientSearch = attachSearch(els.patientPicker, $("patientSuggest"));
   const nomseulSearch = attachSearch(els.nomseulPicker, $("nomseulSuggest"));
+  const prepSearch = attachSearch(els.prepPicker, $("prepSuggest"));
 
   let patients = loadPatients();
   let selectedPatientRecord = null; // référence vers le patient chargé, pour modifier sans dupliquer
@@ -2215,7 +2266,9 @@ function patientLabel(p) {
 
   function refreshNomseulPicker(selectLabel) {
     nomseulSearch.setLabels(patients.map(patientLabel));
+    prepSearch.setLabels(patients.map(patientLabel));
     els.nomseulPicker.value = selectLabel || "";
+    els.prepPicker.value = selectLabel || "";
   }
 
   function currentFields() {
@@ -2280,15 +2333,30 @@ function patientLabel(p) {
     els.copies.value = 1;
     els.patientPicker.value = "";
     selectedPatientRecord = null;
+    // le patient disparaît aussi des autres rubriques (préparation des boîtes, pilulier)
+    els.prepPicker.value = "";
+    els.nomseulPicker.value = "";
+    for (const el of [els.prepNom, els.prepPrenom, els.nomseulNom, els.nomseulPrenom]) el.value = "";
+    updatePrepPreview();
+    updateNomseulPreview();
     updatePreview();
     setStatus(els.statusPatient, "Prêt.");
   });
 
-  els.patientPicker.addEventListener("change", () => {
-    const label = els.patientPicker.value;
-    const match = patients.find((p) => patientLabel(p) === label);
-    if (!match) { selectedPatientRecord = null; return; }
+  // Le patient choisi (dans n'importe quelle rubrique) est repris dans toutes les rubriques :
+  // étiquette patient, préparation des boîtes et pilulier. « Effacer » le retire partout.
+  function selectPatientEverywhere(match) {
+    const label = patientLabel(match);
     selectedPatientRecord = match;
+    els.patientPicker.value = label;
+    els.prepPicker.value = label;
+    els.nomseulPicker.value = label;
+    els.prepNom.value = (match.nom || "").toUpperCase();
+    els.prepPrenom.value = match.prenom || "";
+    els.nomseulNom.value = (match.nom || "").toUpperCase();
+    els.nomseulPrenom.value = match.prenom || "";
+    updatePrepPreview();
+    updateNomseulPreview();
     els.civilite.value = match.civilite || "";
     els.nom.value = (match.nom || "").toUpperCase();
     els.prenom.value = match.prenom || "";
@@ -2303,7 +2371,17 @@ function patientLabel(p) {
     els.nir.value = match.nir || "";
     updatePreview();
     setStatus(els.statusPatient, `Patient « ${label} » chargé.`);
-  });
+  }
+
+  for (const picker of [els.patientPicker, els.prepPicker, els.nomseulPicker]) {
+    picker.addEventListener("change", () => {
+      const match = patients.find((p) => patientLabel(p) === picker.value);
+      if (match) selectPatientEverywhere(match);
+      else if (picker === els.patientPicker) selectedPatientRecord = null;
+    });
+  }
+  els.btnEffacerPatientPrep.addEventListener("click", () => els.btnEffacer.click());
+  els.btnEffacerPatientNomseul.addEventListener("click", () => els.btnEffacer.click());
 
   els.btnEnregistrer.addEventListener("click", () => {
     const f = currentFields();
@@ -2523,27 +2601,69 @@ function patientLabel(p) {
   // ===================== Étiquette de préparation =====================
 
   const tubeInputs = {};
+  const tubeCounts = {};
+  const tubeButtons = {};
+
+  // Dessin d'un tube de prélèvement : bouchon de la couleur du tube, corps arrondi.
+  function tubeSvg(couleur) {
+    const c = TUBE_SWATCHES[couleur] || "#9ca3af";
+    return `<svg viewBox="0 0 40 104" aria-hidden="true">
+      <rect x="5" y="2" width="30" height="20" rx="5" fill="${c}"/>
+      <rect x="8" y="22" width="24" height="3" fill="${c}" opacity="0.6"/>
+      <path d="M9 25 h22 v62 a11 11 0 0 1 -22 0 z" fill="#f3f4f6" stroke="#6b7280" stroke-width="2"/>
+      <path d="M11 62 h18 v25 a9 9 0 0 1 -18 0 z" fill="${c}" opacity="0.45"/>
+    </svg>`;
+  }
+
+  // Met à jour le compteur affiché sur chaque tube à partir des valeurs mémorisées.
+  function refreshTubeCounts() {
+    for (const color of TUBE_COLORS) {
+      const n = parseInt(tubeInputs[color].value, 10) || 0;
+      tubeCounts[color].textContent = String(n);
+      tubeCounts[color].hidden = n <= 0;
+      tubeButtons[color].classList.toggle("vide", n <= 0);
+    }
+  }
+
+  function setTubeCount(color, n) {
+    tubeInputs[color].value = String(Math.max(0, Math.min(9, n)));
+    tubeInputs[color].dispatchEvent(new Event("input"));
+  }
+
   for (const color of TUBE_COLORS) {
     const cell = document.createElement("div");
     cell.className = "tube-cell";
-    const swatch = document.createElement("div");
-    swatch.className = "tube-swatch";
-    swatch.style.background = TUBE_SWATCHES[color] || "#9ca3af";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tube-btn vide";
+    btn.setAttribute("aria-label", `Ajouter un tube ${color}`);
+    btn.innerHTML = tubeSvg(color);
+    const badge = document.createElement("span");
+    badge.className = "tube-count";
+    badge.hidden = true;
+    btn.appendChild(badge);
     const label = document.createElement("label");
     label.textContent = color;
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "tube-minus secondary";
+    minus.textContent = "−";
+    minus.setAttribute("aria-label", `Retirer un tube ${color}`);
+    // La valeur est mémorisée dans un champ caché (lu par prepFields, remis à zéro par « Effacer »).
     const input = document.createElement("input");
-    input.type = "number";
-    input.min = "0";
-    input.max = "9";
+    input.type = "hidden";
     input.value = "0";
-    input.inputMode = "numeric";
-    cell.appendChild(swatch);
+    cell.appendChild(btn);
     cell.appendChild(label);
+    cell.appendChild(minus);
     cell.appendChild(input);
     els.tubesContainer.appendChild(cell);
     tubeInputs[color] = input;
+    tubeCounts[color] = badge;
+    tubeButtons[color] = btn;
+    btn.addEventListener("click", () => setTubeCount(color, (parseInt(input.value, 10) || 0) + 1));
+    minus.addEventListener("click", () => setTubeCount(color, (parseInt(input.value, 10) || 0) - 1));
     input.addEventListener("input", updatePrepPreview);
-    input.addEventListener("change", updatePrepPreview);
   }
 
   function prepFields() {
@@ -2564,6 +2684,7 @@ function patientLabel(p) {
   }
 
   function updatePrepPreview() {
+    refreshTubeCounts();
     const f = prepFields();
     const landscape = composeSectionsCanvas(
       buildPrepSections(f.nom, f.prenom, f.dateOrdo, f.prescripteur, f.dateRdv, f.tubesTexte, f.commentaire)
@@ -2590,6 +2711,7 @@ function patientLabel(p) {
   });
 
   els.btnEffacerPrep.addEventListener("click", () => {
+    els.btnEffacer.click(); // efface le patient dans toutes les rubriques
     els.prepNom.value = "";
     els.prepPrenom.value = "";
     els.prepDateOrdo.value = "";
@@ -2664,16 +2786,10 @@ function patientLabel(p) {
     [els.nomseulNom, els.nomseulPrenom].forEach((el) => el.addEventListener(evt, updateNomseulPreview));
   });
 
-  els.nomseulPicker.addEventListener("change", () => {
-    const label = els.nomseulPicker.value;
-    const match = patients.find((p) => patientLabel(p) === label);
-    if (!match) return;
-    els.nomseulNom.value = (match.nom || "").toUpperCase();
-    els.nomseulPrenom.value = match.prenom || "";
-    updateNomseulPreview();
-  });
+  
 
   els.btnEffacerNomseul.addEventListener("click", () => {
+    els.btnEffacer.click(); // efface le patient dans toutes les rubriques
     els.nomseulNom.value = "";
     els.nomseulPrenom.value = "";
     els.nomseulCopies.value = 1;
@@ -3196,6 +3312,28 @@ function patientLabel(p) {
     pickerEl.addEventListener("pointerdown", sync);
     sync();
   }
+  // Date + heure du RDV : sélecteur du téléphone (calendrier et molettes d'heure).
+  function attachDateTimePicker(textEl, pickerEl) {
+    const sync = () => {
+      const digits = textEl.value.replace(/\D/g, "");
+      if (digits.length >= 8) {
+        const hh = digits.length >= 12 ? `${digits.slice(8, 10)}:${digits.slice(10, 12)}` : "08:00";
+        pickerEl.value = `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}T${hh}`;
+      } else {
+        pickerEl.value = "";
+      }
+    };
+    pickerEl.addEventListener("change", () => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(pickerEl.value);
+      if (!m) return;
+      textEl.value = `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+      textEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    textEl.addEventListener("input", sync);
+    pickerEl.addEventListener("pointerdown", sync);
+    sync();
+  }
+  attachDateTimePicker(els.prepDateRdv, els.prepRdvPicker);
   attachCalendar(els.ordoDate, els.ordoDatePicker);
   attachCalendar(els.prepDateOrdo, els.prepDatePicker);
 
