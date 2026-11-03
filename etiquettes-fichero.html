@@ -1488,7 +1488,7 @@ function patientLabel(p) {
     if (!estNom.some(Boolean)) estNom[0] = true;
     const nom = mots.filter((_, i) => estNom[i]).map((m) => m.toUpperCase()).join(" ");
     const prenom = mots.filter((_, i) => !estNom[i]).join(" ");
-    return nameMarkup(nom, prenom);
+    return `**${`${nom} ${formatPrenom(prenom)}`.trim()}**`; // nom ET prénom en gras
   }
 
   // Retour à la ligne d'un texte contenant des passages **en gras** : lignes de segments
@@ -3178,7 +3178,7 @@ function patientLabel(p) {
 
     const lines = [
       [[[CONTACT_CABINET, false]], 13],
-      [[[CONTACT_PRENOM + " ", false], [CONTACT_NOM, true]], 22],
+      [[[CONTACT_PRENOM + " ", true], [CONTACT_NOM, true]], 22],
       [[[CONTACT_TEL, true]], 28],
     ];
     const fitted = lines.map(([segs, maxH]) => fitMixed(segs, tw, maxH));
@@ -3827,28 +3827,156 @@ function patientLabel(p) {
     return VACCIN_IMPRIME[els.vaccinNom.value] || els.vaccinNom.value;
   }
 
-  // Identité du vaccinateur (nom en gras, profession, adresse, AM / RPPS) puis le vaccin en gras,
-  // la version, le n° de lot et la date d'expiration.
+  // Mise en page « au fil du texte » pour les étiquettes très chargées. Chaque bloc est { atoms, scale } :
+  // les atomes { text, bold } ne sont jamais coupés (un espace insécable les garde d'un seul tenant) et
+  // l'échelle règle la taille relative du bloc (une information secondaire peut être plus petite qu'une
+  // information essentielle). Les retours à la ligne sont choisis pour équilibrer les lignes, puis on
+  // retient la plus grande taille qui tient dans toute la surface de l'étiquette.
+  function composeFlowCanvas(blocks, opts) {
+    const { lineGap = LINE_GAP } = opts || {};
+    const maxW = TEXT_W;
+    const maxH = PRINTHEAD_PX - 2 * MARGIN_PX;
+    const mctx = document.createElement("canvas").getContext("2d");
+
+    function wrapBalanced(widths, space) {
+      const n = widths.length;
+      const best = new Array(n + 1).fill(Infinity);
+      const prev = new Array(n + 1).fill(0);
+      best[0] = 0;
+      for (let j = 1; j <= n; j++) {
+        let w = 0;
+        for (let i = j; i >= 1; i--) {
+          w += widths[i - 1] + (i < j ? space : 0);
+          if (w > maxW) break;
+          const cost = best[i - 1] + (j === n ? 0.3 : 1) * (maxW - w) ** 2;
+          if (cost < best[j]) { best[j] = cost; prev[j] = i - 1; }
+        }
+      }
+      if (!isFinite(best[n])) return null;
+      const out = [];
+      for (let j = n; j > 0; j = prev[j]) out.unshift([prev[j], j]);
+      return out;
+    }
+
+    function layoutAtSize(size) {
+      const out = [];
+      for (const { atoms, scale } of blocks) {
+        if (!atoms.length) continue;
+        const fs = Math.max(8, Math.round(size * scale));
+        const fontReg = `${fs}px ${FONT_FAMILY}`;
+        const fontBold = `bold ${fs}px ${FONT_FAMILY}`;
+        const widths = atoms.map((a) => {
+          mctx.font = a.bold ? fontBold : fontReg;
+          return mctx.measureText(a.text).width;
+        });
+        if (widths.some((w) => w > maxW)) return null;
+        mctx.font = fontReg;
+        const space = mctx.measureText(" ").width;
+        const breaks = wrapBalanced(widths, space);
+        if (!breaks) return null;
+        for (const [a, b] of breaks) {
+          const items = [];
+          let x = 0;
+          for (let i = a; i < b; i++) {
+            items.push({ text: atoms[i].text, bold: atoms[i].bold, font: atoms[i].bold ? fontBold : fontReg, x });
+            x += widths[i] + space;
+          }
+          out.push({ items, width: x - space });
+        }
+      }
+      for (const line of out) {
+        let ascent = 0;
+        let descent = 0;
+        for (const it of line.items) {
+          const ink = measureLineInk(mctx, it.text, it.font);
+          ascent = Math.max(ascent, ink.ascent);
+          descent = Math.max(descent, ink.descent);
+        }
+        line.ascent = ascent;
+        line.descent = descent;
+      }
+      const totalH = out.reduce((sum, l) => sum + l.ascent + l.descent, 0) + lineGap * Math.max(out.length - 1, 0);
+      return { lines: out, totalH };
+    }
+
+    let chosen = null;
+    for (let size = 60; size >= 8; size--) {
+      const layout = layoutAtSize(size);
+      if (layout && layout.totalH <= maxH) { chosen = layout; break; }
+    }
+    if (!chosen) return composeSectionsCanvas([{ text: "(étiquette trop chargée)", weight: "regular" }]);
+
+    const landscape = document.createElement("canvas");
+    landscape.width = MAX_ROWS;
+    landscape.height = PRINTHEAD_PX;
+    const ctx = landscape.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, MAX_ROWS, PRINTHEAD_PX);
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "alphabetic";
+    let cursor = Math.max(MARGIN_PX, Math.round((PRINTHEAD_PX - chosen.totalH) / 2));
+    for (const line of chosen.lines) {
+      const baselineY = cursor + line.ascent;
+      const x0 = Math.max(TEXT_X0, TEXT_X0 + Math.round((TEXT_W - line.width) / 2));
+      for (const it of line.items) {
+        ctx.font = it.font;
+        ctx.fillText(it.text, x0 + it.x, baselineY);
+        if (it.bold) ctx.fillText(it.text, x0 + it.x + 1, baselineY); // léger renfort du gras
+      }
+      cursor += line.ascent + line.descent + lineGap;
+    }
+    return landscape;
+  }
+
+  // Identité du vaccinateur (nom et prénom en gras), repères (profession, adresse, AM / RPPS), puis le
+  // vaccin, sa version et le site d'injection en gras, enfin lot, expiration, date et heure d'injection.
   function composeVaccinCanvas() {
     const v = currentVaccinateur();
     if (!v) return composeSectionsCanvas([{ text: "(choisir un vaccinateur)", weight: "regular" }]);
-    const mots = (texte, bold) => texte.split(/\s+/).filter(Boolean).map((word) => ({ word, bold: !!bold }));
-    const lignes = [{ words: mots((v.nom || "").toUpperCase(), true).concat(mots(formatPrenom(v.prenom || ""))), scale: 1 }];
-    if ((v.titre || "").trim()) lignes.push({ words: mots(v.titre), scale: 1 });
-    const adresse = [v.adresse, v.ville].map((p) => (p || "").trim()).filter(Boolean).join(" ");
-    if (adresse) lignes.push({ words: mots(adresse), scale: 1 });
-    const ids = [(v.am || "").trim() ? `AM ${v.am.trim()}` : "", (v.rpps || "").trim() ? `RPPS ${v.rpps.trim()}` : ""]
-      .filter(Boolean).join(" - ");
-    if (ids) lignes.push({ words: mots(ids), scale: 1 });
-    let nomVaccin = [vaccinNomValue(), els.vaccinVersion.value.trim()].filter(Boolean).join(" – ");
-    if (nomVaccin && els.vaccinSite.value) nomVaccin += ` • ${vaccinSiteCourt(els.vaccinSite.value)}`;
-    lignes.push({ words: mots(nomVaccin || "(vaccin à choisir)", true), scale: 1.1 });
-    const exp = (els.vaccinMois.value && els.vaccinAnnee.value) ? `${els.vaccinMois.value}/${els.vaccinAnnee.value}` : "";
+    const NB = "\u00a0"; // espace insécable : garde ensemble « 21500 BUFFON », « AM 216087692 », etc.
+    const mots = (texte, bold) => (texte || "").split(/\s+/).filter(Boolean).map((text) => ({ text, bold: !!bold }));
+    const colle = (...parties) => parties.filter(Boolean).join(NB);
+    const avecSeparateur = (atomes, sep) => {
+      if (atomes.length) atomes[atomes.length - 1].text += NB + sep;
+      return atomes;
+    };
+    const identite = [...mots((v.nom || "").toUpperCase(), true), ...mots(formatPrenom(v.prenom || ""), true)];
+    let repere = [];
+    if ((v.titre || "").trim()) repere = repere.concat(avecSeparateur(mots(v.titre), "•"));
+    const rue = mots((v.adresse || "").trim());
+    const ville = colle(...(v.ville || "").split(/\s+/).filter(Boolean));
+    const hasIds = (v.am || "").trim() || (v.rpps || "").trim();
+    if (rue.length || ville) {
+      const grp = rue.concat(ville ? [{ text: ville, bold: false }] : []);
+      repere = repere.concat(hasIds ? avecSeparateur(grp, "•") : grp);
+    }
+    if ((v.am || "").trim()) repere.push({ text: colle("AM", v.am.trim()), bold: false });
+    if ((v.rpps || "").trim()) {
+      if ((v.am || "").trim()) repere.push({ text: "-", bold: false });
+      repere.push({ text: colle("RPPS", v.rpps.trim()), bold: false });
+    }
+    const vaccin = vaccinNomValue();
+    const version = els.vaccinVersion.value.trim();
+    let vac = mots(vaccin, true);
+    if (version) vac = avecSeparateur(vac, "–").concat(mots(version, true));
+    const site = els.vaccinSite.value;
+    if (site && (vaccin || version)) {
+      vac = avecSeparateur(vac, "•").concat([{ text: colle(...vaccinSiteCourt(site).split(/\s+/)), bold: true }]);
+    }
+    if (!vac.length) vac = mots("(vaccin à choisir)", true);
+    const detail = [];
     const lot = els.vaccinLot.value.trim().toUpperCase();
+    if (lot) detail.push(colle("Lot", lot));
+    if (els.vaccinMois.value && els.vaccinAnnee.value) detail.push(colle("Exp.", `${els.vaccinMois.value}/${els.vaccinAnnee.value}`));
     const dateInj = els.vaccinDateInj.value.trim();
-    const detail = [lot ? `Lot ${lot}` : "", exp ? `Exp. ${exp}` : "", dateInj ? `le ${dateInj}` : ""].filter(Boolean).join(" • ");
-    if (detail) lignes.push({ words: mots(detail), scale: 1 });
-    return composeRichCanvas(lignes, { wrap: false });
+    if (dateInj) detail.push(colle("le", ...dateInj.split(/\s+/)));
+    const detailAtomes = detail.map((text, i) => ({ text: i < detail.length - 1 ? text + NB + "•" : text, bold: false }));
+    return composeFlowCanvas([
+      { atoms: identite, scale: 1.05 },
+      { atoms: repere, scale: 0.8 },
+      { atoms: vac, scale: 1.15 },
+      { atoms: detailAtomes, scale: 1 },
+    ]);
   }
 
   function updateVaccinPreview() {
