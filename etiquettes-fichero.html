@@ -268,6 +268,13 @@
     border: 2px solid var(--accent-pharma);
   }
   .chip.active { background: var(--accent-pharma); color: #fff; }
+  :root { --accent-vaccin: #dc2626; --tint-vaccin: #feeeee; --accent-vaccin-dark: #b91c1c; }
+  .tile-vaccin { background: var(--accent-vaccin); }
+  .card-vaccin .card-header { background: var(--accent-vaccin); }
+  .card-vaccin .card-body { background: var(--tint-vaccin); }
+  button.btn-vaccin { background: var(--accent-vaccin); }
+  button.btn-vaccin:active { background: var(--accent-vaccin-dark); }
+  .vaccin-form { margin-top: 12px; padding: 10px; background: #fff; border: 1px solid var(--accent-vaccin); border-radius: 8px; }
   .resume-ordo { margin-top: 10px; font-size: 14px; font-weight: 700; }
   .cal-wrap, .row2 > .cal-wrap { position: relative; flex: 0 0 auto; }
   .cal-wrap button { min-width: 0; padding: 10px 12px; }
@@ -457,6 +464,7 @@
     <button class="tile tile-preleveur" type="button" data-module="preleveur">Horodatage<br>et préleveur</button>
     <button class="tile tile-prep" type="button" data-module="prep">Préparer les boîtes<br>de prélèvement</button>
     <button class="tile tile-pharma" type="button" data-module="pharma">Pharmacies et<br>ordonnances</button>
+    <button class="tile tile-vaccin" type="button" data-module="vaccin">Vaccins</button>
     <button class="tile tile-nomseul" type="button" data-module="nomseul">Pilulier</button>
     <button class="tile tile-libre" type="button" data-module="libre">Texte libre</button>
   </div>
@@ -778,6 +786,91 @@
     </div>
     <div id="statusOrdo" class="status"></div>
     <div class="hint">Une case à cocher par mois de validité : faites une croix à la main à chaque dispensation.</div>
+  </div>
+</div>
+</div>
+
+<!-- ============================= Vaccins ============================= -->
+<div class="module-view" id="module-vaccin" hidden>
+<div class="card card-vaccin">
+  <div class="card-header">Vaccin — étiquette du carnet de santé</div>
+  <div class="card-body">
+    <label for="vaccinVaccinateur" style="margin-top:0">Vaccinateur</label>
+    <div class="picker-row">
+      <select id="vaccinVaccinateur"></select>
+      <button id="btnNouveauVaccinateur" class="btn-vaccin" type="button">Nouveau…</button>
+      <button id="btnModifierVaccinateur" class="secondary" type="button">Modifier</button>
+    </div>
+    <div class="hint">Chaque soignant (ou remplaçant) enregistre ici ses propres informations.</div>
+
+    <div class="vaccin-form" id="vaccinForm" hidden>
+      <label for="vaccinFNom" style="margin-top:0">Nom *</label>
+      <input type="text" id="vaccinFNom" autocomplete="off" autocapitalize="characters">
+      <label for="vaccinFPrenom">Prénom *</label>
+      <input type="text" id="vaccinFPrenom" autocomplete="off" autocapitalize="words">
+      <label for="vaccinFTitre">Profession</label>
+      <input type="text" id="vaccinFTitre" autocomplete="off">
+      <label for="vaccinFAdresse">Adresse</label>
+      <input type="text" id="vaccinFAdresse" autocomplete="off">
+      <label for="vaccinFVille">Code postal et ville</label>
+      <input type="text" id="vaccinFVille" autocomplete="off">
+      <label for="vaccinFAm">N° AM</label>
+      <input type="text" id="vaccinFAm" autocomplete="off" inputmode="numeric">
+      <label for="vaccinFRpps">N° RPPS</label>
+      <input type="text" id="vaccinFRpps" autocomplete="off" inputmode="numeric">
+      <div class="buttons" style="margin-top:12px">
+        <button id="btnVaccinFSave" class="btn-vaccin" type="button">Enregistrer</button>
+        <button id="btnVaccinFCancel" class="secondary" type="button">Annuler</button>
+        <button id="btnVaccinFDelete" class="secondary" type="button">Supprimer</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <label for="vaccinDateInj">Date et heure de l'injection</label>
+    <div class="row2">
+      <div><input type="text" id="vaccinDateInj" placeholder="JJ/MM/AAAA HH:MM" inputmode="numeric"></div>
+      <div class="cal-wrap">
+        <button class="btn-vaccin" type="button" tabindex="-1">📅</button>
+        <input type="datetime-local" id="vaccinDatePicker" aria-label="Choisir la date et l'heure dans le calendrier">
+      </div>
+      <div style="flex:0 0 auto">
+        <button id="btnVaccinMaintenant" class="secondary" type="button" style="min-width:0;padding:10px 12px;">Maintenant</button>
+      </div>
+    </div>
+
+    <label for="vaccinNom">Vaccin</label>
+    <select id="vaccinNom"></select>
+    <div id="vaccinAutreWrap" hidden>
+      <label for="vaccinAutre">Nom du vaccin</label>
+      <input type="text" id="vaccinAutre" autocomplete="off">
+    </div>
+
+    <label for="vaccinVersion">Version</label>
+    <input type="text" id="vaccinVersion" list="vaccinVersions" autocomplete="off" placeholder="ex : Vaxigrip, Influvac, Efluelda…">
+    <datalist id="vaccinVersions"></datalist>
+
+    <label for="vaccinLot">N° de lot</label>
+    <input type="text" id="vaccinLot" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
+
+    <label>Date d'expiration</label>
+    <div class="row2">
+      <div><select id="vaccinMois" aria-label="Mois d'expiration"></select></div>
+      <div><select id="vaccinAnnee" aria-label="Année d'expiration"></select></div>
+    </div>
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="vaccinPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+
+    <label for="vaccinCopies">Nombre d'étiquettes</label>
+    <input type="number" id="vaccinCopies" value="1" min="1" max="30">
+
+    <div class="buttons">
+      <button id="btnImprimerVaccin" class="btn-vaccin" type="button">Imprimer cette étiquette</button>
+    </div>
+    <div id="statusVaccin" class="status"></div>
   </div>
 </div>
 </div>
@@ -2103,6 +2196,7 @@ function patientLabel(p) {
     preleveur: $("module-preleveur"),
     prep: $("module-prep"),
     pharma: $("module-pharma"),
+    vaccin: $("module-vaccin"),
     nomseul: $("module-nomseul"),
     libre: $("module-libre"),
   };
@@ -3538,6 +3632,266 @@ function patientLabel(p) {
   updatePharmaPreview();
   setOrdoToday();
   buildOrdoChips();
+
+  // ===================== Vaccins =====================
+
+  const VACCINATEURS_KEY = "fichero_vaccinateurs_v1";
+  const VACCINATEUR_SEL_KEY = "fichero_vaccinateur_sel_v1";
+  const PROFESSION_DEFAUT = "Infirmier Diplômé d'Etat Libéral";
+  const DEFAULT_VACCINATEURS = [
+    { nom: "GRAVIER", prenom: "Antoine", titre: PROFESSION_DEFAUT, adresse: "2 rue du Pont",
+      ville: "21500 BUFFON", am: "216087692", rpps: "10103186952" },
+  ];
+  // Les vaccins les plus pratiqués en premier, puis les autres.
+  const VACCINS_FREQUENTS = ["Grippe", "Covid-19", "dTcaP", "dTP", "Pneumocoque", "Zona", "VRS"];
+  const VACCINS_AUTRES = ["Hépatite B", "Hépatite A", "ROR", "HPV", "Méningocoque ACWY", "Méningocoque B",
+    "Méningocoque C", "Varicelle", "Tétanos", "Rage", "Fièvre jaune", "Typhoïde", "Encéphalite à tiques"];
+  // Marques usuelles proposées dans le champ « version » (la saisie libre reste possible).
+  const VACCIN_VERSIONS = {
+    "Grippe": ["Vaxigrip", "Influvac", "Efluelda", "Fluenz", "Flucelvax"],
+    "Covid-19": ["Comirnaty", "Spikevax", "Nuvaxovid"],
+    "dTcaP": ["Boostrix Tetra", "Repevax"],
+    "dTP": ["Revaxis"],
+    "Pneumocoque": ["Prevenar 20", "Prevenar 13", "Pneumovax", "Vaxneuvance"],
+    "Zona": ["Shingrix"],
+    "VRS": ["Arexvy", "Abrysvo", "mResvia"],
+    "Hépatite B": ["Engerix B", "HBVaxPro", "Fendrix"],
+    "Hépatite A": ["Havrix", "Avaxim", "Vaqta"],
+    "ROR": ["M-M-RVaxPro", "Priorix"],
+    "HPV": ["Gardasil 9"],
+    "Méningocoque ACWY": ["Nimenrix", "MenQuadfi"],
+    "Méningocoque B": ["Bexsero", "Trumenba"],
+    "Méningocoque C": ["Neisvac", "Menjugate"],
+    "Varicelle": ["Varivax", "Varilrix"],
+    "Rage": ["Verorab", "Rabipur"],
+    "Fièvre jaune": ["Stamaril"],
+    "Typhoïde": ["Typhim Vi"],
+    "Encéphalite à tiques": ["Ticovac", "Encepur"],
+  };
+  const MOIS_VACCIN = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août",
+    "Septembre", "Octobre", "Novembre", "Décembre"];
+
+  function saveVaccinateurs(list) {
+    localStorage.setItem(VACCINATEURS_KEY, JSON.stringify(list));
+  }
+
+  function loadVaccinateurs() {
+    try {
+      const data = JSON.parse(localStorage.getItem(VACCINATEURS_KEY));
+      if (Array.isArray(data) && data.length) return data;
+    } catch (e) { /* ignore */ }
+    const defaults = DEFAULT_VACCINATEURS.map((v) => ({ ...v }));
+    try { saveVaccinateurs(defaults); } catch (e) { /* ignore */ }
+    return defaults;
+  }
+
+  let vaccinateurs = loadVaccinateurs();
+  let vaccinEditing = null; // fiche en cours de modification (null = nouveau vaccinateur)
+
+  function vaccinateurLabel(v) {
+    return `${(v.nom || "").toUpperCase()} ${formatPrenom(v.prenom || "")}`.trim();
+  }
+
+  function currentVaccinateur() {
+    return vaccinateurs.find((v) => vaccinateurLabel(v) === els.vaccinVaccinateur.value) || null;
+  }
+
+  function refreshVaccinateurs(selectLabel) {
+    vaccinateurs.sort((a, b) => vaccinateurLabel(a).localeCompare(vaccinateurLabel(b), "fr"));
+    const labels = vaccinateurs.map(vaccinateurLabel);
+    els.vaccinVaccinateur.innerHTML = "";
+    for (const label of labels) {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = label;
+      els.vaccinVaccinateur.appendChild(opt);
+    }
+    let want = selectLabel;
+    if (!want) { try { want = localStorage.getItem(VACCINATEUR_SEL_KEY); } catch (e) { /* ignore */ } }
+    if (labels.includes(want)) els.vaccinVaccinateur.value = want;
+    updateVaccinPreview();
+  }
+
+  function buildVaccinSelects() {
+    const group = (label, list) => {
+      const g = document.createElement("optgroup");
+      g.label = label;
+      for (const nom of list) {
+        const opt = document.createElement("option");
+        opt.value = opt.textContent = nom;
+        g.appendChild(opt);
+      }
+      return g;
+    };
+    els.vaccinNom.innerHTML = "";
+    els.vaccinNom.appendChild(group("Les plus fréquents", VACCINS_FREQUENTS));
+    els.vaccinNom.appendChild(group("Autres vaccins", VACCINS_AUTRES));
+    const autre = document.createElement("option");
+    autre.value = "__autre";
+    autre.textContent = "Autre vaccin (à saisir)…";
+    els.vaccinNom.appendChild(autre);
+
+    els.vaccinMois.innerHTML = '<option value="">Mois</option>';
+    MOIS_VACCIN.forEach((nom, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i + 1).padStart(2, "0");
+      opt.textContent = `${opt.value} – ${nom}`;
+      els.vaccinMois.appendChild(opt);
+    });
+    els.vaccinAnnee.innerHTML = '<option value="">Année</option>';
+    const annee = new Date().getFullYear();
+    for (let a = annee; a <= annee + 7; a++) {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = String(a);
+      els.vaccinAnnee.appendChild(opt);
+    }
+    refreshVaccinVersions();
+  }
+
+  function refreshVaccinVersions() {
+    els.vaccinVersions.innerHTML = "";
+    for (const nom of VACCIN_VERSIONS[els.vaccinNom.value] || []) {
+      const opt = document.createElement("option");
+      opt.value = nom;
+      els.vaccinVersions.appendChild(opt);
+    }
+  }
+
+  function vaccinNomValue() {
+    return els.vaccinNom.value === "__autre" ? els.vaccinAutre.value.trim() : els.vaccinNom.value;
+  }
+
+  // Identité du vaccinateur (nom en gras, profession, adresse, AM / RPPS) puis le vaccin en gras,
+  // la version, le n° de lot et la date d'expiration.
+  function composeVaccinCanvas() {
+    const v = currentVaccinateur();
+    if (!v) return composeSectionsCanvas([{ text: "(choisir un vaccinateur)", weight: "regular" }]);
+    const mots = (texte, bold) => texte.split(/\s+/).filter(Boolean).map((word) => ({ word, bold: !!bold }));
+    const lignes = [{ words: mots((v.nom || "").toUpperCase(), true).concat(mots(formatPrenom(v.prenom || ""))), scale: 1 }];
+    if ((v.titre || "").trim()) lignes.push({ words: mots(v.titre), scale: 1 });
+    const adresse = [v.adresse, v.ville].map((p) => (p || "").trim()).filter(Boolean).join(" ");
+    if (adresse) lignes.push({ words: mots(adresse), scale: 1 });
+    const ids = [(v.am || "").trim() ? `AM ${v.am.trim()}` : "", (v.rpps || "").trim() ? `RPPS ${v.rpps.trim()}` : ""]
+      .filter(Boolean).join(" - ");
+    if (ids) lignes.push({ words: mots(ids), scale: 1 });
+    const nomVaccin = [vaccinNomValue(), els.vaccinVersion.value.trim()].filter(Boolean).join(" – ");
+    lignes.push({ words: mots(nomVaccin || "(vaccin à choisir)", true), scale: 1.1 });
+    const exp = (els.vaccinMois.value && els.vaccinAnnee.value) ? `${els.vaccinMois.value}/${els.vaccinAnnee.value}` : "";
+    const lot = els.vaccinLot.value.trim().toUpperCase();
+    const dateInj = els.vaccinDateInj.value.trim();
+    const detail = [lot ? `Lot ${lot}` : "", exp ? `Exp. ${exp}` : "", dateInj ? `le ${dateInj}` : ""].filter(Boolean).join(" • ");
+    if (detail) lignes.push({ words: mots(detail), scale: 1 });
+    return composeRichCanvas(lignes, { wrap: false });
+  }
+
+  function updateVaccinPreview() {
+    return paintPreview(els.vaccinPreviewCanvas, composeVaccinCanvas());
+  }
+
+  function openVaccinForm(record) {
+    vaccinEditing = record;
+    const r = record || { nom: "", prenom: "", titre: PROFESSION_DEFAUT, adresse: "2 rue du Pont", ville: "21500 BUFFON", am: "", rpps: "" };
+    els.vaccinFNom.value = r.nom || "";
+    els.vaccinFPrenom.value = r.prenom || "";
+    els.vaccinFTitre.value = r.titre || "";
+    els.vaccinFAdresse.value = r.adresse || "";
+    els.vaccinFVille.value = r.ville || "";
+    els.vaccinFAm.value = r.am || "";
+    els.vaccinFRpps.value = r.rpps || "";
+    els.btnVaccinFDelete.hidden = !record;
+    els.vaccinForm.hidden = false;
+  }
+
+  els.btnNouveauVaccinateur.addEventListener("click", () => openVaccinForm(null));
+  els.btnModifierVaccinateur.addEventListener("click", () => {
+    const v = currentVaccinateur();
+    if (!v) { setStatus(els.statusVaccin, "Choisissez d'abord un vaccinateur dans la liste.", "err"); return; }
+    openVaccinForm(v);
+  });
+  els.btnVaccinFCancel.addEventListener("click", () => { els.vaccinForm.hidden = true; });
+
+  els.btnVaccinFSave.addEventListener("click", () => {
+    const record = {
+      nom: els.vaccinFNom.value.trim().toUpperCase(),
+      prenom: formatPrenom(els.vaccinFPrenom.value.trim()),
+      titre: els.vaccinFTitre.value.trim(),
+      adresse: els.vaccinFAdresse.value.trim(),
+      ville: els.vaccinFVille.value.trim(),
+      am: els.vaccinFAm.value.trim(),
+      rpps: els.vaccinFRpps.value.trim(),
+    };
+    if (!record.nom || !record.prenom) {
+      setStatus(els.statusVaccin, "Merci de renseigner le nom et le prénom.", "err");
+      return;
+    }
+    const label = vaccinateurLabel(record);
+    vaccinateurs = vaccinateurs.filter((v) => v !== vaccinEditing && vaccinateurLabel(v) !== label);
+    vaccinateurs.push(record);
+    saveVaccinateurs(vaccinateurs);
+    try { localStorage.setItem(VACCINATEUR_SEL_KEY, label); } catch (e) { /* ignore */ }
+    els.vaccinForm.hidden = true;
+    refreshVaccinateurs(label);
+    setStatus(els.statusVaccin, `Vaccinateur « ${label} » enregistré.`, "ok");
+  });
+
+  els.btnVaccinFDelete.addEventListener("click", () => {
+    if (!vaccinEditing) return;
+    const label = vaccinateurLabel(vaccinEditing);
+    if (!confirm(`Supprimer « ${label} » de la liste des vaccinateurs ?`)) return;
+    vaccinateurs = vaccinateurs.filter((v) => v !== vaccinEditing);
+    saveVaccinateurs(vaccinateurs);
+    els.vaccinForm.hidden = true;
+    refreshVaccinateurs();
+    setStatus(els.statusVaccin, `Vaccinateur « ${label} » supprimé.`, "err");
+  });
+
+  els.vaccinVaccinateur.addEventListener("change", () => {
+    try { localStorage.setItem(VACCINATEUR_SEL_KEY, els.vaccinVaccinateur.value); } catch (e) { /* ignore */ }
+    updateVaccinPreview();
+  });
+  els.vaccinNom.addEventListener("change", () => {
+    els.vaccinAutreWrap.hidden = els.vaccinNom.value !== "__autre";
+    els.vaccinVersion.value = "";
+    refreshVaccinVersions();
+    updateVaccinPreview();
+  });
+  els.vaccinLot.addEventListener("input", () => {
+    els.vaccinLot.value = els.vaccinLot.value.toUpperCase();
+    updateVaccinPreview();
+  });
+  [els.vaccinAutre, els.vaccinVersion].forEach((el) => el.addEventListener("input", updateVaccinPreview));
+
+  // Date et heure de l'injection : par défaut « maintenant », modifiables (calendrier du téléphone).
+  let vaccinManual = false; // true dès que la date/heure a été saisie ou choisie à la main
+  function setVaccinNow() {
+    const n = new Date();
+    const p2 = (x) => String(x).padStart(2, "0");
+    els.vaccinDateInj.value = `${p2(n.getDate())}/${p2(n.getMonth() + 1)}/${n.getFullYear()} ${p2(n.getHours())}:${p2(n.getMinutes())}`;
+    vaccinManual = false;
+    updateVaccinPreview();
+  }
+  attachDateTimePicker(els.vaccinDateInj, els.vaccinDatePicker);
+  els.vaccinDateInj.addEventListener("input", () => { vaccinManual = true; updateVaccinPreview(); });
+  els.btnVaccinMaintenant.addEventListener("click", setVaccinNow);
+  [els.vaccinMois, els.vaccinAnnee, els.vaccinVersion].forEach((el) => el.addEventListener("change", updateVaccinPreview));
+
+  els.btnImprimerVaccin.addEventListener("click", async () => {
+    if (!currentVaccinateur()) {
+      setStatus(els.statusVaccin, "Choisissez ou créez d'abord un vaccinateur (bouton « Nouveau… »).", "err");
+      return;
+    }
+    if (!vaccinNomValue()) {
+      setStatus(els.statusVaccin, "Choisissez le vaccin injecté.", "err");
+      return;
+    }
+    if (!vaccinManual) setVaccinNow(); // heure réelle de l'injection, pas celle de l'ouverture de la page
+    const copies = clampInt(els.vaccinCopies.value, 1, 30, 1);
+    await printSequence(els.statusVaccin, [{ canvas: updateVaccinPreview(), copies }],
+      `${copies} étiquette(s) vaccin imprimée(s).`);
+  });
+
+  buildVaccinSelects();
+  setVaccinNow();
+  refreshVaccinateurs();
 
   // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
   tryAutoConnect().then((ok) => {
