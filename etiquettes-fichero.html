@@ -850,6 +850,10 @@
     <input type="text" id="vaccinVersion" list="vaccinVersions" autocomplete="off" placeholder="ex : Vaxigrip, Influvac, Efluelda…">
     <datalist id="vaccinVersions"></datalist>
 
+    <label for="vaccinSite">Site d'injection</label>
+    <select id="vaccinSite"></select>
+    <div class="hint">Sites recommandés pour ce vaccin (à choisir à chaque injection).</div>
+
     <label for="vaccinLot">N° de lot</label>
     <input type="text" id="vaccinLot" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
 
@@ -3643,31 +3647,77 @@ function patientLabel(p) {
       ville: "21500 BUFFON", am: "216087692", rpps: "10103186952" },
   ];
   // Les vaccins les plus pratiqués en premier, puis les autres.
-  const VACCINS_FREQUENTS = ["Grippe", "Covid-19", "dTcaP", "dTP", "Pneumocoque", "Zona", "VRS"];
-  const VACCINS_AUTRES = ["Hépatite B", "Hépatite A", "ROR", "HPV", "Méningocoque ACWY", "Méningocoque B",
-    "Méningocoque C", "Varicelle", "Tétanos", "Rage", "Fièvre jaune", "Typhoïde", "Encéphalite à tiques"];
+  const VACCINS_FREQUENTS = ["Grippe saisonnière", "Covid-19",
+    "Diphtérie, Tétanos, Poliomyélite, Coqueluche (dTcaP)",
+    "Diphtérie, Tétanos, Poliomyélite (dTP)", "Pneumocoques", "Zona"];
+  const VACCINS_AUTRES = ["Coqueluche", "Fièvre jaune", "Haemophilus influenzae b", "Hépatite A", "Hépatite B",
+    "Hépatite A + B", "Papillomavirus humain (HPV)", "Méningocoques", "Rage (préexposition)",
+    "Rotavirus", "Rougeole, Oreillons, Rubéole (ROR)", "Tuberculose (BCG)", "Varicelle", "Mpox"];
+  // Texte court imprimé sur l'étiquette (sinon le nom tel que saisi).
+  const VACCIN_IMPRIME = {
+    "Grippe saisonnière": "Grippe",
+    "Diphtérie, Tétanos, Poliomyélite, Coqueluche (dTcaP)": "dTcaP",
+    "Diphtérie, Tétanos, Poliomyélite (dTP)": "dTP",
+    "Pneumocoques": "Pneumocoque",
+    "Haemophilus influenzae b": "Haemophilus b",
+    "Hépatite A + B": "Hépatite A+B",
+    "Papillomavirus humain (HPV)": "HPV",
+    "Méningocoques": "Méningocoque",
+    "Rage (préexposition)": "Rage",
+    "Rougeole, Oreillons, Rubéole (ROR)": "ROR",
+    "Tuberculose (BCG)": "BCG",
+  };
   // Marques usuelles proposées dans le champ « version » (la saisie libre reste possible).
   const VACCIN_VERSIONS = {
-    "Grippe": ["Vaxigrip", "Influvac", "Efluelda", "Fluenz", "Flucelvax"],
+    "Grippe saisonnière": ["Vaxigrip", "Influvac", "Efluelda", "Fluenz", "Flucelvax"],
     "Covid-19": ["Comirnaty", "Spikevax", "Nuvaxovid"],
-    "dTcaP": ["Boostrix Tetra", "Repevax"],
-    "dTP": ["Revaxis"],
-    "Pneumocoque": ["Prevenar 20", "Prevenar 13", "Pneumovax", "Vaxneuvance"],
+    "Diphtérie, Tétanos, Poliomyélite, Coqueluche (dTcaP)": ["Boostrix Tetra", "Repevax"],
+    "Diphtérie, Tétanos, Poliomyélite (dTP)": ["Revaxis"],
+    "Pneumocoques": ["Prevenar 20", "Prevenar 13", "Pneumovax", "Vaxneuvance"],
     "Zona": ["Shingrix"],
-    "VRS": ["Arexvy", "Abrysvo", "mResvia"],
-    "Hépatite B": ["Engerix B", "HBVaxPro", "Fendrix"],
-    "Hépatite A": ["Havrix", "Avaxim", "Vaqta"],
-    "ROR": ["M-M-RVaxPro", "Priorix"],
-    "HPV": ["Gardasil 9"],
-    "Méningocoque ACWY": ["Nimenrix", "MenQuadfi"],
-    "Méningocoque B": ["Bexsero", "Trumenba"],
-    "Méningocoque C": ["Neisvac", "Menjugate"],
-    "Varicelle": ["Varivax", "Varilrix"],
-    "Rage": ["Verorab", "Rabipur"],
     "Fièvre jaune": ["Stamaril"],
-    "Typhoïde": ["Typhim Vi"],
-    "Encéphalite à tiques": ["Ticovac", "Encepur"],
+    "Haemophilus influenzae b": ["Act-HIB"],
+    "Hépatite A": ["Havrix", "Avaxim", "Vaqta"],
+    "Hépatite B": ["Engerix B", "HBVaxPro", "Fendrix"],
+    "Hépatite A + B": ["Twinrix"],
+    "Papillomavirus humain (HPV)": ["Gardasil 9"],
+    "Méningocoques": ["Nimenrix", "MenQuadfi", "Bexsero", "Trumenba", "Neisvac", "Menjugate"],
+    "Rage (préexposition)": ["Verorab", "Rabipur"],
+    "Rotavirus": ["Rotarix", "RotaTeq"],
+    "Rougeole, Oreillons, Rubéole (ROR)": ["M-M-RVaxPro", "Priorix"],
+    "Tuberculose (BCG)": ["BCG SSI"],
+    "Varicelle": ["Varivax", "Varilrix"],
+    "Mpox": ["Imvanex"],
   };
+  // Sites d'injection recommandés selon le vaccin (le premier est le plus habituel) ; à vérifier au
+  // besoin dans le RCP du produit, la voie dépendant parfois de la marque.
+  const SITES_IMD = ["Deltoïde gauche (IM)", "Deltoïde droit (IM)"];
+  const SITES_IMC = ["Cuisse gauche (IM)", "Cuisse droite (IM)"];
+  const SITES_SCB = ["Bras gauche (SC)", "Bras droit (SC)"];
+  const SITES_IDB = ["Bras gauche (ID)", "Bras droit (ID)"];
+  const VACCIN_SITES = {
+    "Grippe saisonnière": [...SITES_IMD, ...SITES_SCB, ...SITES_IMC, "Voie nasale (Fluenz)"],
+    "Covid-19": [...SITES_IMD, ...SITES_IMC],
+    "Diphtérie, Tétanos, Poliomyélite, Coqueluche (dTcaP)": SITES_IMD,
+    "Diphtérie, Tétanos, Poliomyélite (dTP)": SITES_IMD,
+    "Pneumocoques": [...SITES_IMD, ...SITES_IMC, ...SITES_SCB],
+    "Zona": SITES_IMD,
+    "Coqueluche": SITES_IMD,
+    "Fièvre jaune": [...SITES_SCB, ...SITES_IMD, ...SITES_IMC],
+    "Haemophilus influenzae b": [...SITES_IMD, ...SITES_IMC],
+    "Hépatite A": SITES_IMD,
+    "Hépatite B": SITES_IMD,
+    "Hépatite A + B": SITES_IMD,
+    "Papillomavirus humain (HPV)": SITES_IMD,
+    "Méningocoques": [...SITES_IMD, ...SITES_IMC],
+    "Rage (préexposition)": [...SITES_IMD, ...SITES_IMC],
+    "Rotavirus": ["Voie orale"],
+    "Rougeole, Oreillons, Rubéole (ROR)": [...SITES_SCB, ...SITES_IMD, ...SITES_IMC],
+    "Tuberculose (BCG)": SITES_IDB,
+    "Varicelle": [...SITES_SCB, ...SITES_IMD],
+    "Mpox": [...SITES_SCB, ...SITES_IDB],
+  };
+  const VACCIN_SITES_TOUS = [...SITES_IMD, ...SITES_IMC, ...SITES_SCB, ...SITES_IDB, "Voie nasale", "Voie orale"];
   const MOIS_VACCIN = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août",
     "Septembre", "Octobre", "Novembre", "Décembre"];
 
@@ -3756,8 +3806,25 @@ function patientLabel(p) {
     }
   }
 
+  // « Deltoïde gauche (IM) » -> « Deltoïde G (IM) » (plus court sur l'étiquette).
+  function vaccinSiteCourt(site) {
+    return site.replace(" gauche", " G").replace(" droite", " D").replace(" droit", " D");
+  }
+
+  // Liste des sites recommandés pour le vaccin choisi ; le choix est à refaire à chaque changement de vaccin.
+  function refreshVaccinSites() {
+    els.vaccinSite.innerHTML = '<option value="">— choisir le site —</option>';
+    for (const site of VACCIN_SITES[els.vaccinNom.value] || VACCIN_SITES_TOUS) {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = site;
+      els.vaccinSite.appendChild(opt);
+    }
+  }
+  els.vaccinSite.addEventListener("change", updateVaccinPreview);
+
   function vaccinNomValue() {
-    return els.vaccinNom.value === "__autre" ? els.vaccinAutre.value.trim() : els.vaccinNom.value;
+    if (els.vaccinNom.value === "__autre") return els.vaccinAutre.value.trim();
+    return VACCIN_IMPRIME[els.vaccinNom.value] || els.vaccinNom.value;
   }
 
   // Identité du vaccinateur (nom en gras, profession, adresse, AM / RPPS) puis le vaccin en gras,
@@ -3773,7 +3840,8 @@ function patientLabel(p) {
     const ids = [(v.am || "").trim() ? `AM ${v.am.trim()}` : "", (v.rpps || "").trim() ? `RPPS ${v.rpps.trim()}` : ""]
       .filter(Boolean).join(" - ");
     if (ids) lignes.push({ words: mots(ids), scale: 1 });
-    const nomVaccin = [vaccinNomValue(), els.vaccinVersion.value.trim()].filter(Boolean).join(" – ");
+    let nomVaccin = [vaccinNomValue(), els.vaccinVersion.value.trim()].filter(Boolean).join(" – ");
+    if (nomVaccin && els.vaccinSite.value) nomVaccin += ` • ${vaccinSiteCourt(els.vaccinSite.value)}`;
     lignes.push({ words: mots(nomVaccin || "(vaccin à choisir)", true), scale: 1.1 });
     const exp = (els.vaccinMois.value && els.vaccinAnnee.value) ? `${els.vaccinMois.value}/${els.vaccinAnnee.value}` : "";
     const lot = els.vaccinLot.value.trim().toUpperCase();
@@ -3851,6 +3919,7 @@ function patientLabel(p) {
   els.vaccinNom.addEventListener("change", () => {
     els.vaccinAutreWrap.hidden = els.vaccinNom.value !== "__autre";
     els.vaccinVersion.value = "";
+    refreshVaccinSites();
     refreshVaccinVersions();
     updateVaccinPreview();
   });
@@ -3890,6 +3959,7 @@ function patientLabel(p) {
   });
 
   buildVaccinSelects();
+  refreshVaccinSites();
   setVaccinNow();
   refreshVaccinateurs();
 
