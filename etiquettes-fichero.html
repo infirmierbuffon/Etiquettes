@@ -1121,6 +1121,28 @@
     <input type="number" id="libreSize" value="30" min="10" max="70">
   </div>
 </div>
+<div class="card card-libre">
+  <div class="card-header">Étiquettes mots (un clic = impression)</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">Un bouton imprime l'étiquette tout de suite, en gras et le plus grand possible. La croix ✕ supprime un mot.</div>
+    <div class="buttons" id="motsButtons" style="margin-top:8px"></div>
+
+    <label for="motNouveau">Ajouter un mot</label>
+    <div class="row2">
+      <div><input type="text" id="motNouveau" placeholder="ex : ECG" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase"></div>
+      <div style="flex:0 0 auto"><button id="btnMotAjouter" class="btn-libre" type="button" style="min-width:0;padding:10px 14px;">Ajouter</button></div>
+    </div>
+
+    <label for="motCopies">Nombre d'étiquettes</label>
+    <input type="number" id="motCopies" value="1" min="1" max="30">
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="motPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+    <div id="statusMot" class="status"></div>
+  </div>
+</div>
 </div>
 
 <details>
@@ -4107,8 +4129,24 @@ function patientLabel(p) {
   setVaccinNow();
   refreshVaccinateurs();
 
-  // --- Étiquettes « mot » (texte libre) : un bouton = une impression, en gras et le plus grand possible ---
-  const MOTS_RAPIDES = ["MESURES", "DIAGNOSTICS", "INJECTIONS", "PANSEMENTS", "PRÉLÈVEMENTS", "SANGUINS"];
+  // --- Étiquettes « mot » (texte libre) : un bouton = une impression, en gras et le plus grand possible.
+  // La liste est modifiable (ajout en tapant, suppression en un clic) et mémorisée sur ce téléphone. ---
+  const MOTS_KEY = "fichero_mots_libres_v1";
+  const MOTS_DEFAUT = ["MESURES", "DIAGNOSTICS", "INJECTIONS", "PANSEMENTS", "PRÉLÈVEMENTS", "SANGUINS"];
+
+  function loadMots() {
+    try {
+      const data = JSON.parse(localStorage.getItem(MOTS_KEY));
+      if (Array.isArray(data)) return data.filter((m) => typeof m === "string" && m.trim());
+    } catch (e) { /* ignore */ }
+    return MOTS_DEFAUT.slice();
+  }
+
+  let motsLibres = loadMots();
+
+  function saveMots() {
+    try { localStorage.setItem(MOTS_KEY, JSON.stringify(motsLibres)); } catch (e) { /* ignore */ }
+  }
 
   function composeMotCanvas(mot) {
     return composeSectionsCanvas([{ text: mot, weight: "bold" }], true);
@@ -4120,15 +4158,55 @@ function patientLabel(p) {
     await printSequence(els.statusMot, [{ canvas, copies }], `« ${mot} » : ${copies} étiquette(s) imprimée(s).`);
   }
 
-  for (const mot of MOTS_RAPIDES) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn-libre";
-    btn.textContent = mot;
-    btn.addEventListener("click", () => printMot(mot));
-    els.motsButtons.appendChild(btn);
+  function renderMots() {
+    els.motsButtons.innerHTML = "";
+    if (!motsLibres.length) {
+      const vide = document.createElement("div");
+      vide.className = "hint";
+      vide.textContent = "Aucun mot : ajoutez-en un ci-dessous.";
+      els.motsButtons.appendChild(vide);
+    }
+    for (const mot of motsLibres) {
+      const cell = document.createElement("div");
+      cell.style.cssText = "display:flex;gap:4px;flex:1 1 auto";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-libre";
+      btn.textContent = mot;
+      btn.addEventListener("click", () => printMot(mot));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "secondary";
+      del.textContent = "✕";
+      del.setAttribute("aria-label", `Supprimer ${mot}`);
+      del.style.cssText = "flex:0 0 auto;min-width:0;width:44px;padding:10px 0";
+      del.addEventListener("click", () => {
+        motsLibres = motsLibres.filter((m) => m !== mot);
+        saveMots();
+        renderMots();
+      });
+      cell.append(btn, del);
+      els.motsButtons.appendChild(cell);
+    }
   }
-  paintPreview(els.motPreviewCanvas, composeMotCanvas(MOTS_RAPIDES[0]));
+
+  function ajouterMot() {
+    const mot = els.motNouveau.value.trim().toUpperCase();
+    if (!mot) return;
+    if (!motsLibres.includes(mot)) {
+      motsLibres.push(mot);
+      saveMots();
+      renderMots();
+    }
+    els.motNouveau.value = "";
+  }
+  els.btnMotAjouter.addEventListener("click", ajouterMot);
+  els.motNouveau.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); ajouterMot(); }
+  });
+
+  renderMots();
+  paintPreview(els.motPreviewCanvas, composeMotCanvas(motsLibres[0] || "MOT"));
 
   // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
   tryAutoConnect().then((ok) => {
