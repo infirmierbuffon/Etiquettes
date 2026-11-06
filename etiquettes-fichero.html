@@ -1045,6 +1045,22 @@
 <!-- ============================= Étiquette texte libre ============================= -->
 <div class="module-view" id="module-libre" hidden>
 <div class="card card-libre">
+  <div class="card-header">Étiquettes mots (un clic = impression)</div>
+  <div class="card-body">
+    <div class="hint" style="margin-top:0">Un bouton imprime l'étiquette tout de suite, en gras et le plus grand possible.</div>
+    <div class="buttons" id="motsButtons" style="margin-top:8px"></div>
+
+    <label for="motCopies">Nombre d'étiquettes</label>
+    <input type="number" id="motCopies" value="1" min="1" max="30">
+
+    <label style="margin-top:12px">Aperçu</label>
+    <div class="preview-wrap">
+      <canvas id="motPreviewCanvas" class="preview-canvas" width="400" height="96"></canvas>
+    </div>
+    <div id="statusMot" class="status"></div>
+  </div>
+</div>
+<div class="card card-libre">
   <div class="card-header">Étiquette texte libre</div>
   <div class="card-body">
     <label for="libreTexte">Texte</label>
@@ -4090,6 +4106,29 @@ function patientLabel(p) {
   refreshVaccinSites();
   setVaccinNow();
   refreshVaccinateurs();
+
+  // --- Étiquettes « mot » (texte libre) : un bouton = une impression, en gras et le plus grand possible ---
+  const MOTS_RAPIDES = ["MESURES", "DIAGNOSTICS", "INJECTIONS", "PANSEMENTS", "PRÉLÈVEMENTS", "SANGUINS"];
+
+  function composeMotCanvas(mot) {
+    return composeSectionsCanvas([{ text: mot, weight: "bold" }], true);
+  }
+
+  async function printMot(mot) {
+    const copies = clampInt(els.motCopies.value, 1, 30, 1);
+    const canvas = paintPreview(els.motPreviewCanvas, composeMotCanvas(mot));
+    await printSequence(els.statusMot, [{ canvas, copies }], `« ${mot} » : ${copies} étiquette(s) imprimée(s).`);
+  }
+
+  for (const mot of MOTS_RAPIDES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-libre";
+    btn.textContent = mot;
+    btn.addEventListener("click", () => printMot(mot));
+    els.motsButtons.appendChild(btn);
+  }
+  paintPreview(els.motPreviewCanvas, composeMotCanvas(MOTS_RAPIDES[0]));
 
   // Au chargement : tentative de reconnexion silencieuse à l'imprimante déjà appairée.
   tryAutoConnect().then((ok) => {
